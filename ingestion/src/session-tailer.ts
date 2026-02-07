@@ -53,6 +53,7 @@ async function insertSessions(sessions: ParsedSession[]): Promise<void> {
     const { error } = await supabase.from("sessions").insert(batch);
     if (error) {
       console.error(`[sessions] Error inserting batch: ${error.message}`);
+      throw error;
     }
   }
 }

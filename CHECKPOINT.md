@@ -31,9 +31,8 @@
 - `ingestion/.env` — SUPABASE_URL + SERVICE_ROLE_KEY
 
 ### Supabase Keys
-- **URL**: `https://zdyervwjssvhiockkpbn.supabase.co`
-- **Anon key**: `eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpkeWVydndqc3N2aGlvY2trcGJuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzA0MzE2MTcsImV4cCI6MjA4NjAwNzYxN30.9JtCJA-3JZXMgt67Ryr3P1g8pGxuWdCbyMHswalonAA`
-- **Service role key**: `eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpkeWVydndqc3N2aGlvY2trcGJuIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3MDQzMTYxNywiZXhwIjoyMDg2MDA3NjE3fQ.2oMHgwd8c9vTBAtcyxHJGdGKZ7S64w0QCtqaNr0SKBw`
+- All keys managed via Doppler (project: `mission-control`, config: `dev`)
+- Never commit secrets to source control
 
 ## What's Next
 

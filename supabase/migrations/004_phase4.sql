@@ -23,7 +23,7 @@ CREATE INDEX idx_cost_events_model ON cost_events (model);
 ALTER TABLE cost_events ENABLE ROW LEVEL SECURITY;
 
 CREATE POLICY "anon_select_cost_events" ON cost_events
-  FOR SELECT TO anon USING (true);
+  FOR SELECT TO anon, authenticated USING (true);
 
 CREATE POLICY "service_role_all_cost_events" ON cost_events
   FOR ALL TO service_role USING (true) WITH CHECK (true);

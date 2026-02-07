@@ -10,6 +10,11 @@ export function getSupabase(): SupabaseClient {
 
   if (!url || !key) {
     // Return a dummy client for build time / SSR without env vars
+    if (typeof window !== "undefined") {
+      console.error(
+        "Missing NEXT_PUBLIC_SUPABASE_URL or NEXT_PUBLIC_SUPABASE_ANON_KEY — Supabase calls will fail"
+      );
+    }
     _client = createClient("https://placeholder.supabase.co", "placeholder");
     return _client;
   }

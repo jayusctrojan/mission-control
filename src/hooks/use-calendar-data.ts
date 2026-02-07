@@ -32,11 +32,17 @@ export function useCalendarData(month: Date) {
   const [loading, setLoading] = useState(true);
 
   // Compute visible date range (grid might show days from adjacent months)
-  const rangeStart = startOfWeek(startOfMonth(month), { weekStartsOn: 0 });
-  const rangeEnd = endOfWeek(endOfMonth(month), { weekStartsOn: 0 });
-
-  const rangeStartISO = rangeStart.toISOString();
-  const rangeEndISO = rangeEnd.toISOString();
+  // Memoize to avoid creating new Date objects every render
+  const { rangeStart, rangeEnd, rangeStartISO, rangeEndISO } = useMemo(() => {
+    const start = startOfWeek(startOfMonth(month), { weekStartsOn: 0 });
+    const end = endOfWeek(endOfMonth(month), { weekStartsOn: 0 });
+    return {
+      rangeStart: start,
+      rangeEnd: end,
+      rangeStartISO: start.toISOString(),
+      rangeEndISO: end.toISOString(),
+    };
+  }, [month.getTime()]);
 
   // Fetch missions with due_at in range
   useEffect(() => {

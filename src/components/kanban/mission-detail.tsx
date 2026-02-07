@@ -90,8 +90,13 @@ export function MissionDetail({
 
   async function handleDelete() {
     if (!mission) return;
-    await deleteMission(mission.id);
-    onOpenChange(false);
+    if (!confirm("Delete this mission? This cannot be undone.")) return;
+    try {
+      await deleteMission(mission.id);
+      onOpenChange(false);
+    } catch (err) {
+      console.error("Delete failed:", err);
+    }
   }
 
   async function handleAddComment() {

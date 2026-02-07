@@ -64,7 +64,7 @@ jobs:
         uses: anthropics/claude-code-action@v1
         with:
           anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
-          direct_prompt: |
+          prompt: |
             A CodeRabbit review was just submitted on this PR with state "${{ github.event.review.state }}".
 
             Your job: fix EVERY issue CodeRabbit raised — bugs, style, nitpicks, naming, all of it.

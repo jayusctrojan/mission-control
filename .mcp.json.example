@@ -2,7 +2,7 @@
   "mcpServers": {
     "supabase": {
       "type": "http",
-      "url": "https://mcp.supabase.com/mcp?project_ref=zdyervwjssvhiockkpbn"
+      "url": "https://mcp.supabase.com/mcp?project_ref=YOUR_PROJECT_REF"
     },
     "chrome-devtools": {
       "command": "npx",
@@ -14,14 +14,14 @@
       "type": "http",
       "url": "https://api.ref.tools/mcp",
       "headers": {
-        "x-ref-api-key": "ref-52556af0bae17942db88"
+        "x-ref-api-key": "YOUR_REF_API_KEY"
       }
     },
     "render": {
       "type": "http",
       "url": "https://mcp.render.com/mcp",
       "headers": {
-        "Authorization": "Bearer rnd_kW5eBoEKlgktEnSQ59xoY5qYNueW"
+        "Authorization": "Bearer YOUR_RENDER_API_KEY"
       }
     }
   }

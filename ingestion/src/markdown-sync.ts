@@ -45,7 +45,8 @@ function parseTaskQueue(content: string, filePath: string): ParsedMission[] {
     if (taskMatch) {
       const completed = taskMatch[1] !== " ";
       const title = taskMatch[2].trim();
-      const markdownRef = `${filePath}:${i + 1}`;
+      // Use stable identifier based on file + status + title (not line number)
+      const markdownRef = `${filePath}:${currentStatus}:${title}`;
 
       missions.push({
         title,
@@ -108,7 +109,9 @@ async function syncMissions(filePath: string): Promise<void> {
 
 export function watchTaskQueue(filePath: string): void {
   // Initial sync
-  syncMissions(filePath);
+  syncMissions(filePath).catch((err) =>
+    console.error("[markdown-sync] Initial sync error:", err)
+  );
 
   const watcher = watch(filePath, {
     persistent: true,
@@ -118,7 +121,9 @@ export function watchTaskQueue(filePath: string): void {
 
   watcher.on("change", () => {
     console.log("[markdown-sync] task-queue.md changed, re-syncing...");
-    syncMissions(filePath);
+    syncMissions(filePath).catch((err) =>
+      console.error("[markdown-sync] Sync error:", err)
+    );
   });
 
   console.log(`[markdown-sync] Watching ${filePath}`);

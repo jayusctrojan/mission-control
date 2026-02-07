@@ -6,6 +6,8 @@ import { tailSessionsLog } from "./session-tailer.js";
 import { watchTaskQueue } from "./markdown-sync.js";
 import { config } from "./config.js";
 
+const cleanups: Array<{ close: () => Promise<void> }> = [];
+
 async function main() {
   console.log("=== Mission Control Ingestion Service ===");
   console.log(`Supabase:    ${config.supabaseUrl}`);
@@ -21,8 +23,8 @@ async function main() {
   invalidateAgentCache();
 
   // Step 2: Start tailing logs
-  tailGatewayLog(config.gatewayLog);
-  tailWatchdogLog(config.watchdogLog);
+  cleanups.push(tailGatewayLog(config.gatewayLog));
+  cleanups.push(tailWatchdogLog(config.watchdogLog));
 
   // Step 3: Tail sessions JSONL (if file exists)
   if (existsSync(config.sessionsLog)) {
@@ -43,6 +45,17 @@ async function main() {
 
   console.log("\n[main] Ingestion service running. Press Ctrl+C to stop.");
 }
+
+async function shutdown() {
+  console.log("\n[main] Shutting down...");
+  for (const handle of cleanups) {
+    await handle.close().catch(() => {});
+  }
+  process.exit(0);
+}
+
+process.on("SIGINT", shutdown);
+process.on("SIGTERM", shutdown);
 
 main().catch((err) => {
   console.error("Fatal error:", err);

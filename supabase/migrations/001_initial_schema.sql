@@ -90,12 +90,12 @@ ALTER TABLE events ENABLE ROW LEVEL SECURITY;
 ALTER TABLE sessions ENABLE ROW LEVEL SECURITY;
 ALTER TABLE ingestion_state ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY "Allow anonymous read on agents" ON agents FOR SELECT USING (true);
-CREATE POLICY "Allow anonymous read on events" ON events FOR SELECT USING (true);
-CREATE POLICY "Allow anonymous read on sessions" ON sessions FOR SELECT USING (true);
+CREATE POLICY "Allow anonymous read on agents" ON agents FOR SELECT TO anon, authenticated USING (true);
+CREATE POLICY "Allow anonymous read on events" ON events FOR SELECT TO anon, authenticated USING (true);
+CREATE POLICY "Allow anonymous read on sessions" ON sessions FOR SELECT TO anon, authenticated USING (true);
 
 -- Service role gets full access (for ingestion)
-CREATE POLICY "Service role full access agents" ON agents FOR ALL USING (true) WITH CHECK (true);
-CREATE POLICY "Service role full access events" ON events FOR ALL USING (true) WITH CHECK (true);
-CREATE POLICY "Service role full access sessions" ON sessions FOR ALL USING (true) WITH CHECK (true);
-CREATE POLICY "Service role full access ingestion_state" ON ingestion_state FOR ALL USING (true) WITH CHECK (true);
+CREATE POLICY "Service role full access agents" ON agents FOR ALL TO service_role USING (true) WITH CHECK (true);
+CREATE POLICY "Service role full access events" ON events FOR ALL TO service_role USING (true) WITH CHECK (true);
+CREATE POLICY "Service role full access sessions" ON sessions FOR ALL TO service_role USING (true) WITH CHECK (true);
+CREATE POLICY "Service role full access ingestion_state" ON ingestion_state FOR ALL TO service_role USING (true) WITH CHECK (true);

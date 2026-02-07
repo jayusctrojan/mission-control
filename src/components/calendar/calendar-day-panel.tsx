@@ -36,10 +36,16 @@ export function CalendarDayPanel({
 
   useEffect(() => {
     setLoadingEvents(true);
-    fetchEventsForDay(date).then((data) => {
-      setEvents(data);
-      setLoadingEvents(false);
-    });
+    fetchEventsForDay(date)
+      .then((data) => {
+        setEvents(data);
+      })
+      .catch(() => {
+        setEvents([]);
+      })
+      .finally(() => {
+        setLoadingEvents(false);
+      });
   }, [date, fetchEventsForDay]);
 
   return (

@@ -12,6 +12,8 @@ export async function updateMissionStatus(
   const update: Record<string, unknown> = { status, sort_order };
   if (status === "done") {
     update.completed_at = new Date().toISOString();
+  } else {
+    update.completed_at = null;
   }
   const { error } = await supabase.from("missions").update(update).eq("id", id);
   if (error) throw new Error(error.message);

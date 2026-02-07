@@ -59,8 +59,14 @@ interface OpenClawConfig {
 export async function syncAgents(): Promise<void> {
   console.log("[agents-sync] Reading openclaw.json...");
 
-  const raw = await readFile(config.openclawConfig, "utf-8");
-  const cfg: OpenClawConfig = JSON.parse(raw);
+  let cfg: OpenClawConfig;
+  try {
+    const raw = await readFile(config.openclawConfig, "utf-8");
+    cfg = JSON.parse(raw);
+  } catch (err) {
+    console.error("[agents-sync] Failed to read/parse openclaw.json:", err);
+    return;
+  }
   const defaultModel = cfg.agents.defaults.model.primary;
 
   // Build brain->hand mapping

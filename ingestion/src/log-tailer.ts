@@ -81,6 +81,7 @@ async function insertEvents(events: ParsedEvent[]): Promise<void> {
     const { error } = await supabase.from("events").insert(batch);
     if (error) {
       console.error(`[insert] Error inserting events batch: ${error.message}`);
+      throw error;
     }
   }
 }
@@ -115,7 +116,7 @@ export function tailLog(
   filePath: string,
   parser: LineParser,
   label: string
-): void {
+): { close: () => Promise<void> } {
   let processing = false;
 
   async function processNewLines() {
@@ -161,12 +162,18 @@ export function tailLog(
   });
 
   console.log(`[${label}] Watching ${filePath}`);
+
+  return {
+    close: async () => {
+      await watcher.close();
+    },
+  };
 }
 
-export function tailGatewayLog(filePath: string): void {
-  tailLog(filePath, parseGatewayLine, "gateway");
+export function tailGatewayLog(filePath: string): { close: () => Promise<void> } {
+  return tailLog(filePath, parseGatewayLine, "gateway");
 }
 
-export function tailWatchdogLog(filePath: string): void {
-  tailLog(filePath, parseWatchdogLine, "watchdog");
+export function tailWatchdogLog(filePath: string): { close: () => Promise<void> } {
+  return tailLog(filePath, parseWatchdogLine, "watchdog");
 }

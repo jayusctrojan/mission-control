@@ -48,10 +48,10 @@ ALTER PUBLICATION supabase_realtime ADD TABLE mission_comments;
 ALTER TABLE missions ENABLE ROW LEVEL SECURITY;
 ALTER TABLE mission_comments ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY "Allow anonymous read on missions" ON missions FOR SELECT USING (true);
-CREATE POLICY "Allow anonymous read on mission_comments" ON mission_comments FOR SELECT USING (true);
-CREATE POLICY "Service role full access missions" ON missions FOR ALL USING (true) WITH CHECK (true);
-CREATE POLICY "Service role full access mission_comments" ON mission_comments FOR ALL USING (true) WITH CHECK (true);
+CREATE POLICY "Allow anonymous read on missions" ON missions FOR SELECT TO anon, authenticated USING (true);
+CREATE POLICY "Allow anonymous read on mission_comments" ON mission_comments FOR SELECT TO anon, authenticated USING (true);
+CREATE POLICY "Service role full access missions" ON missions FOR ALL TO service_role USING (true) WITH CHECK (true);
+CREATE POLICY "Service role full access mission_comments" ON mission_comments FOR ALL TO service_role USING (true) WITH CHECK (true);
 
 -- Extend events.event_type CHECK to include new types
 ALTER TABLE events DROP CONSTRAINT events_event_type_check;
