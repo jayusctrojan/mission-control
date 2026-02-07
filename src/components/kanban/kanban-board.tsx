@@ -16,7 +16,7 @@ import {
 import { arrayMove } from "@dnd-kit/sortable";
 import { useMissions } from "@/hooks/use-missions";
 import { useAgentStatuses } from "@/hooks/use-agent-statuses";
-import { updateMissionStatus } from "@/app/missions/actions";
+import { updateMissionStatus, bulkUpdateSortOrders } from "@/app/missions/actions";
 import { KanbanColumn } from "./kanban-column";
 import { MissionCard } from "./mission-card";
 import { MissionDetail } from "./mission-detail";
@@ -111,6 +111,7 @@ export function KanbanBoard() {
       // Use functional setMissions to read fresh state and compute sort order atomically
       let persistStatus: MissionStatus | null = null;
       let persistSortOrder = 0;
+      let columnUpdates: Array<{ id: string; sort_order: number }> = [];
 
       setMissions((prev) => {
         const mission = prev.find((m) => m.id === active.id);
@@ -140,33 +141,41 @@ export function KanbanBoard() {
               ...other,
               ...reordered.map((m, i) => ({ ...m, sort_order: i })),
             ];
+            // Capture all column sort orders for bulk persistence
+            columnUpdates = reordered.map((m, i) => ({ id: m.id, sort_order: i }));
           }
         }
 
-        // Compute sort_order for persistence from current state
-        const targetColumn = nextState
-          .filter((m) => m.status === newStatus && m.id !== active.id)
-          .sort((a, b) => a.sort_order - b.sort_order);
+        // Compute sort_order for persistence (cross-column moves)
+        if (columnUpdates.length === 0) {
+          const targetColumn = nextState
+            .filter((m) => m.status === newStatus && m.id !== active.id)
+            .sort((a, b) => a.sort_order - b.sort_order);
 
-        if (STATUSES.includes(over.id as MissionStatus)) {
-          persistSortOrder = targetColumn.length > 0
-            ? targetColumn[targetColumn.length - 1].sort_order + 1
-            : 0;
-        } else {
-          const overIndex = targetColumn.findIndex((m) => m.id === over.id);
-          persistSortOrder = overIndex >= 0 ? overIndex : targetColumn.length;
+          if (STATUSES.includes(over.id as MissionStatus)) {
+            persistSortOrder = targetColumn.length > 0
+              ? targetColumn[targetColumn.length - 1].sort_order + 1
+              : 0;
+          } else {
+            const overIndex = targetColumn.findIndex((m) => m.id === over.id);
+            persistSortOrder = overIndex >= 0 ? overIndex : targetColumn.length;
+          }
         }
 
         return nextState;
       });
 
-      // Persist (uses values captured from the functional update above)
-      if (persistStatus) {
-        try {
+      // Persist
+      try {
+        if (columnUpdates.length > 0) {
+          // Within-column reorder: persist all sort orders in the column
+          await bulkUpdateSortOrders(columnUpdates);
+        } else if (persistStatus) {
+          // Cross-column move: persist status + sort order for the dragged mission
           await updateMissionStatus(active.id as string, persistStatus, persistSortOrder);
-        } catch (err) {
-          console.error("Failed to update mission status:", err);
         }
+      } catch (err) {
+        console.error("Failed to persist mission reorder:", err);
       }
     },
     [setMissions]

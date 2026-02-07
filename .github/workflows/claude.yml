@@ -34,17 +34,14 @@ jobs:
             const prNumber = context.payload.pull_request.number;
             const reviewId = context.payload.review.id;
 
-            // Fetch the review comments from this specific review
-            const { data: comments } = await github.rest.pulls.listCommentsForReview({
+            // Fetch all review comments (paginated to handle >100 comments)
+            const comments = await github.paginate(github.rest.pulls.listCommentsForReview, {
               owner: context.repo.owner,
               repo: context.repo.repo,
               pull_number: prNumber,
               review_id: reviewId,
               per_page: 100,
             });
-
-            // Also fetch the review body
-            const reviewBody = context.payload.review.body || '';
 
             // Count severity levels by parsing CodeRabbit's emoji markers
             // 🔴 Critical, 🟠 Major, 🟡 Minor, 🟢 Nitpick/Praise
@@ -55,9 +52,9 @@ jobs:
 
             for (const c of comments) {
               const body = c.body || '';
-              if (body.includes('🔴') || body.toLowerCase().includes('critical')) {
+              if (body.includes('🔴') || body.includes('| _🔴 Critical_')) {
                 critical++;
-              } else if (body.includes('🟠') || body.toLowerCase().includes('| _🟠 major_')) {
+              } else if (body.includes('🟠') || body.includes('| _🟠 Major_')) {
                 major++;
               } else {
                 minor++;
@@ -155,7 +152,7 @@ jobs:
                Work through all fixes WITHOUT committing or pushing between them.
 
             5. After ALL fixes are applied, stage everything and create a SINGLE commit:
-               "fix: resolve CodeRabbit review feedback (round ${{ steps.analyze.outputs.count }})"
+               "fix: resolve CodeRabbit review feedback (round $((${{ steps.analyze.outputs.count }} + 1)))"
 
             6. Push ONCE to the PR branch.
 

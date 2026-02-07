@@ -19,6 +19,19 @@ export async function updateMissionStatus(
   if (error) throw new Error(error.message);
 }
 
+export async function bulkUpdateSortOrders(
+  updates: Array<{ id: string; sort_order: number }>
+) {
+  const supabase = getSupabaseServer();
+  const results = await Promise.all(
+    updates.map(({ id, sort_order }) =>
+      supabase.from("missions").update({ sort_order }).eq("id", id)
+    )
+  );
+  const failed = results.find((r) => r.error);
+  if (failed?.error) throw new Error(failed.error.message);
+}
+
 export async function createMission(data: {
   title: string;
   description?: string;
