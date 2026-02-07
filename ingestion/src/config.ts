@@ -8,6 +8,7 @@ export const config = {
   watchdogLog: process.env.WATCHDOG_LOG || `${process.env.HOME}/.openclaw/logs/watchdog.log`,
   sessionsLog: process.env.SESSIONS_LOG || `${process.env.HOME}/.openclaw/logs/sessions.jsonl`,
   taskQueueMd: process.env.TASK_QUEUE_MD || `${process.env.HOME}/.openclaw/task-queue.md`,
+  cronJobsJson: process.env.CRON_JOBS_JSON || `${process.env.HOME}/.openclaw/cron/jobs.json`,
 };
 
 // Validate required env vars

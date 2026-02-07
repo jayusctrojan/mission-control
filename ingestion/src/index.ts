@@ -4,6 +4,7 @@ import { tailGatewayLog, tailWatchdogLog, invalidateAgentCache } from "./log-tai
 import { watchConfig } from "./config-watcher.js";
 import { tailSessionsLog } from "./session-tailer.js";
 import { watchTaskQueue } from "./markdown-sync.js";
+import { syncCronJobs } from "./cron-sync.js";
 import { config } from "./config.js";
 
 const cleanups: Array<{ close: () => Promise<void> }> = [];
@@ -16,6 +17,7 @@ async function main() {
   console.log(`Watchdog:    ${config.watchdogLog}`);
   console.log(`Sessions:    ${config.sessionsLog}`);
   console.log(`Task Queue:  ${config.taskQueueMd}`);
+  console.log(`Cron Jobs:   ${config.cronJobsJson}`);
   console.log();
 
   // Step 1: Sync agent roster from openclaw.json
@@ -40,7 +42,14 @@ async function main() {
     console.log(`[markdown-sync] ${config.taskQueueMd} not found, skipping`);
   }
 
-  // Step 5: Watch for config changes
+  // Step 5: Sync cron jobs (if file exists)
+  if (existsSync(config.cronJobsJson)) {
+    await syncCronJobs(config.cronJobsJson);
+  } else {
+    console.log(`[cron-sync] ${config.cronJobsJson} not found, skipping`);
+  }
+
+  // Step 6: Watch for config changes
   watchConfig();
 
   console.log("\n[main] Ingestion service running. Press Ctrl+C to stop.");

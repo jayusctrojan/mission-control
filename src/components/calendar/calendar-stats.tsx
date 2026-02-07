@@ -10,6 +10,21 @@ export function CalendarStatsBar({ stats }: CalendarStatsBarProps) {
   return (
     <div className="flex items-center gap-6">
       <div className="flex items-center gap-2">
+        <div className="h-2 w-2 rounded-full bg-violet-500" />
+        <span className="text-xs text-zinc-400">
+          <span className="font-medium text-zinc-200">{stats.tasksToday}</span>{" "}
+          tasks today
+        </span>
+      </div>
+      <div className="flex items-center gap-2">
+        <div className="h-2 w-2 rounded-full bg-violet-400" />
+        <span className="text-xs text-zinc-400">
+          <span className="font-medium text-zinc-200">{stats.tasksThisWeek}</span>{" "}
+          this week
+        </span>
+      </div>
+      <div className="h-3 w-px bg-zinc-700" />
+      <div className="flex items-center gap-2">
         <div className="h-2 w-2 rounded-full bg-red-500" />
         <span className="text-xs text-zinc-400">
           <span className="font-medium text-zinc-200">{stats.overdue}</span>{" "}

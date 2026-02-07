@@ -18,6 +18,7 @@ interface CalendarDayCellProps {
   month: Date;
   missions: MissionRow[];
   eventCount: number;
+  taskCount: number;
   isSelected: boolean;
   onClick: () => void;
 }
@@ -27,6 +28,7 @@ export function CalendarDayCell({
   month,
   missions,
   eventCount,
+  taskCount,
   isSelected,
   onClick,
 }: CalendarDayCellProps) {
@@ -52,6 +54,15 @@ export function CalendarDayCell({
       >
         {format(date, "d")}
       </span>
+
+      {/* Scheduled tasks badge */}
+      {taskCount > 0 && (
+        <div className="mt-1">
+          <span className="text-[9px] font-medium text-violet-300 bg-violet-500/15 rounded px-1 py-0.5">
+            {taskCount} {taskCount === 1 ? "task" : "tasks"}
+          </span>
+        </div>
+      )}
 
       {/* Mission dots */}
       {missions.length > 0 && (

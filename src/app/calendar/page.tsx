@@ -6,7 +6,7 @@ export default function CalendarPage() {
       <div>
         <h2 className="text-lg font-semibold text-zinc-100">Calendar</h2>
         <p className="text-sm text-zinc-500 mt-0.5">
-          Missions by due date and daily events
+          Daily agenda: scheduled tasks, missions, and events
         </p>
       </div>
       <CalendarView />

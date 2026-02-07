@@ -30,6 +30,7 @@ export type EventType =
 export type MissionStatus = "backlog" | "in_progress" | "review" | "done";
 export type MissionPriority = "low" | "medium" | "high" | "critical";
 export type CostProvider = "anthropic" | "openai" | "google" | "xai" | "together" | "other";
+export type TaskSource = "openclaw" | "system_cron" | "launchagent";
 
 export interface Database {
   public: {
@@ -141,6 +142,23 @@ export interface Database {
         };
         Insert: Omit<Database["public"]["Tables"]["cost_events"]["Row"], "id" | "created_at">;
         Update: Partial<Database["public"]["Tables"]["cost_events"]["Insert"]>;
+      };
+      scheduled_tasks: {
+        Row: {
+          id: string;
+          external_id: string | null;
+          name: string;
+          schedule_expr: string;
+          schedule_tz: string;
+          agent_id: string | null;
+          source: TaskSource;
+          enabled: boolean;
+          description: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: Omit<Database["public"]["Tables"]["scheduled_tasks"]["Row"], "id" | "created_at" | "updated_at">;
+        Update: Partial<Database["public"]["Tables"]["scheduled_tasks"]["Insert"]>;
       };
     };
   };

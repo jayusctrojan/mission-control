@@ -10,9 +10,11 @@ import {
   isBefore,
   isWithinInterval,
   addDays,
+  eachDayOfInterval,
   isSameDay,
 } from "date-fns";
 import { supabase } from "@/lib/supabase";
+import { useScheduledTasks } from "./use-scheduled-tasks";
 import type { Database } from "@/lib/database.types";
 
 type MissionRow = Database["public"]["Tables"]["missions"]["Row"];
@@ -22,6 +24,8 @@ export interface CalendarStats {
   overdue: number;
   dueThisWeek: number;
   completedThisMonth: number;
+  tasksToday: number;
+  tasksThisWeek: number;
 }
 
 export function useCalendarData(month: Date) {
@@ -30,6 +34,7 @@ export function useCalendarData(month: Date) {
     Record<string, number>
   >({});
   const [loading, setLoading] = useState(true);
+  const { getTasksForDay, getTaskCountForDay, loading: tasksLoading } = useScheduledTasks();
 
   // Compute visible date range (grid might show days from adjacent months)
   // Memoize to avoid creating new Date objects every render
@@ -176,9 +181,19 @@ export function useCalendarData(month: Date) {
       }
     }
 
-    return { overdue, dueThisWeek, completedThisMonth };
+    // Compute scheduled task stats
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const tasksToday = getTaskCountForDay(now);
+    let tasksThisWeek = 0;
+    const weekDays = eachDayOfInterval({ start: now, end: weekEnd });
+    for (const d of weekDays) {
+      tasksThisWeek += getTaskCountForDay(d);
+    }
+
+    return { overdue, dueThisWeek, completedThisMonth, tasksToday, tasksThisWeek };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [missions, month.getTime()]);
+  }, [missions, month.getTime(), getTaskCountForDay]);
 
   // Get missions for a specific day
   const getMissionsForDay = useCallback(
@@ -193,10 +208,12 @@ export function useCalendarData(month: Date) {
   return {
     missions,
     eventCountsByDay,
-    loading,
+    loading: loading || tasksLoading,
     fetchEventsForDay,
     stats,
     getMissionsForDay,
+    getTasksForDay,
+    getTaskCountForDay,
     rangeStart,
     rangeEnd,
   };
