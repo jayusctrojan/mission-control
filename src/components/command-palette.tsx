@@ -1,133 +1,196 @@
 "use client";
 
-import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { useState, useEffect, useCallback } from "react";
+import { useRouter } from "next/navigation";
+import { formatDistanceToNow } from "date-fns";
 import {
+  Target,
   Activity,
-  LayoutDashboard,
   Bot,
-  Radio,
-  Kanban,
-  CalendarDays,
-  Search,
+  MessageSquare,
 } from "lucide-react";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import { Separator } from "@/components/ui/separator";
-import { BRAIN_AGENTS } from "@/lib/agents";
-import { AgentDot } from "@/components/agent-dot";
-import { useAgentStatuses } from "@/hooks/use-agent-statuses";
-import { cn } from "@/lib/utils";
+import {
+  CommandDialog,
+  CommandInput,
+  CommandList,
+  CommandEmpty,
+  CommandGroup,
+  CommandItem,
+} from "@/components/ui/command";
+import { supabase } from "@/lib/supabase";
+import { useDebounce } from "@/hooks/use-debounce";
 
-const NAV_ITEMS = [
-  { href: "/", label: "Activity Feed", icon: Activity },
-  { href: "/missions", label: "Missions", icon: Kanban },
-  { href: "/calendar", label: "Calendar", icon: CalendarDays },
-  { href: "/agents", label: "Agents", icon: Bot },
-];
+interface SearchResult {
+  category: string;
+  id: string;
+  title: string;
+  subtitle: string | null;
+  occurred_at: string;
+  rank: number;
+}
 
-export function Sidebar() {
-  const pathname = usePathname();
-  const statuses = useAgentStatuses();
+const CATEGORY_META: Record<
+  string,
+  { label: string; icon: React.ElementType }
+> = {
+  mission: { label: "Missions", icon: Target },
+  event: { label: "Events", icon: Activity },
+  agent: { label: "Agents", icon: Bot },
+  comment: { label: "Comments", icon: MessageSquare },
+};
 
-  const onlineCount = Object.values(statuses).filter(
-    (s) => s === "online"
-  ).length;
+export function CommandPalette() {
+  const [open, setOpen] = useState(false);
+  const [query, setQuery] = useState("");
+  const [results, setResults] = useState<SearchResult[]>([]);
+  const [loading, setLoading] = useState(false);
+  const router = useRouter();
+
+  const debouncedQuery = useDebounce(query, 300);
+
+  // Listen for Cmd+K / Ctrl+K
+  useEffect(() => {
+    function handleKeyDown(e: KeyboardEvent) {
+      if (e.key === "k" && (e.metaKey || e.ctrlKey)) {
+        e.preventDefault();
+        setOpen((prev) => !prev);
+      }
+    }
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  }, []);
+
+  // Search when debounced query changes
+  useEffect(() => {
+    if (debouncedQuery.length < 2) {
+      setResults([]);
+      return;
+    }
+
+    let cancelled = false;
+    setLoading(true);
+
+    supabase
+      .rpc("search_all", { query_text: debouncedQuery, result_limit: 5 })
+      .then(({ data, error }) => {
+        if (cancelled) return;
+        if (error) {
+          console.error("Search error:", error);
+          setResults([]);
+        } else {
+          setResults((data as SearchResult[]) ?? []);
+        }
+        setLoading(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [debouncedQuery]);
+
+  // Reset state when dialog closes
+  useEffect(() => {
+    if (!open) {
+      setQuery("");
+      setResults([]);
+    }
+  }, [open]);
+
+  const handleSelect = useCallback(
+    (result: SearchResult) => {
+      setOpen(false);
+      switch (result.category) {
+        case "mission":
+          router.push(`/missions?detail=${result.id}`);
+          break;
+        case "event":
+          router.push("/");
+          break;
+        case "agent":
+          router.push("/agents");
+          break;
+        case "comment":
+          router.push(`/missions?detail=${result.id}`);
+          break;
+      }
+    },
+    [router]
+  );
+
+  // Group results by category
+  const grouped = results.reduce(
+    (acc, r) => {
+      if (!acc[r.category]) acc[r.category] = [];
+      acc[r.category].push(r);
+      return acc;
+    },
+    {} as Record<string, SearchResult[]>
+  );
 
   return (
-    <aside className="w-[280px] shrink-0 border-r border-border bg-zinc-950 flex flex-col h-screen">
-      {/* Header */}
-      <div className="p-5 pb-3">
-        <Link href="/" className="flex items-center gap-2.5">
-          <div className="h-8 w-8 rounded-lg bg-violet-600 flex items-center justify-center">
-            <Radio className="h-4 w-4 text-white" />
+    <CommandDialog
+      open={open}
+      onOpenChange={setOpen}
+      title="Search"
+      description="Search across missions, events, agents, and comments"
+      showCloseButton={false}
+      className="bg-zinc-900 border-zinc-800"
+    >
+      <CommandInput
+        placeholder="Search missions, events, agents..."
+        value={query}
+        onValueChange={setQuery}
+        className="text-zinc-100"
+      />
+      <CommandList className="border-t border-zinc-800">
+        {loading && query.length >= 2 && (
+          <div className="py-4 text-center text-sm text-zinc-500">
+            Searching...
           </div>
-          <div>
-            <h1 className="text-sm font-semibold tracking-wide text-zinc-100">
-              MISSION CONTROL
-            </h1>
-            <p className="text-[11px] text-zinc-500">
-              {onlineCount} agent{onlineCount !== 1 ? "s" : ""} online
-            </p>
-          </div>
-        </Link>
-      </div>
+        )}
 
-      <Separator className="bg-zinc-800" />
+        {!loading && query.length >= 2 && results.length === 0 && (
+          <CommandEmpty className="text-zinc-500">
+            No results found.
+          </CommandEmpty>
+        )}
 
-      {/* Navigation */}
-      <nav className="px-3 py-3 space-y-1">
-        {NAV_ITEMS.map((item) => {
-          const isActive = pathname === item.href;
+        {Object.entries(grouped).map(([category, items]) => {
+          const meta = CATEGORY_META[category];
+          if (!meta) return null;
+          const Icon = meta.icon;
+
           return (
-            <Link
-              key={item.href}
-              href={item.href}
-              className={cn(
-                "flex items-center gap-3 px-3 py-2 rounded-md text-sm transition-colors",
-                isActive
-                  ? "bg-zinc-800 text-zinc-100"
-                  : "text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800/50"
-              )}
-            >
-              <item.icon className="h-4 w-4" />
-              {item.label}
-            </Link>
+            <CommandGroup key={category} heading={meta.label}>
+              {items.map((item) => (
+                <CommandItem
+                  key={`${item.category}-${item.id}`}
+                  value={`${item.category}-${item.id}-${item.title}`}
+                  onSelect={() => handleSelect(item)}
+                  className="gap-3 py-2.5 cursor-pointer"
+                >
+                  <Icon className="h-4 w-4 text-zinc-500 shrink-0" />
+                  <div className="flex-1 min-w-0">
+                    <div className="text-[13px] text-zinc-200 truncate">
+                      {item.title}
+                    </div>
+                    {item.subtitle && (
+                      <div className="text-[11px] text-zinc-500 truncate">
+                        {item.subtitle}
+                      </div>
+                    )}
+                  </div>
+                  <span className="text-[10px] text-zinc-600 shrink-0">
+                    {formatDistanceToNow(new Date(item.occurred_at), {
+                      addSuffix: true,
+                    })}
+                  </span>
+                </CommandItem>
+              ))}
+            </CommandGroup>
           );
         })}
-      </nav>
-
-      {/* Search trigger */}
-      <div className="px-3 pb-2">
-        <button
-          onClick={() => {
-            document.dispatchEvent(
-              new KeyboardEvent("keydown", { key: "k", metaKey: true })
-            );
-          }}
-          className="flex w-full items-center gap-3 rounded-md border border-zinc-800 bg-zinc-900/50 px-3 py-2 text-sm text-zinc-500 hover:text-zinc-300 hover:border-zinc-700 transition-colors"
-        >
-          <Search className="h-3.5 w-3.5" />
-          <span className="flex-1 text-left">Search...</span>
-          <kbd className="pointer-events-none rounded border border-zinc-700 bg-zinc-800 px-1.5 py-0.5 text-[10px] font-medium text-zinc-500">
-            ⌘K
-          </kbd>
-        </button>
-      </div>
-
-      <Separator className="bg-zinc-800" />
-
-      {/* Agent roster */}
-      <div className="px-3 pt-3 pb-1">
-        <span className="px-3 text-[11px] font-medium uppercase tracking-wider text-zinc-500">
-          Agents
-        </span>
-      </div>
-
-      <ScrollArea className="flex-1 px-3">
-        <div className="space-y-0.5 pb-4">
-          {BRAIN_AGENTS.map((agent) => (
-            <div
-              key={agent.id}
-              className="flex items-center gap-3 px-3 py-1.5 rounded-md text-sm text-zinc-300 hover:bg-zinc-800/50 transition-colors"
-            >
-              <AgentDot color={agent.color} status={statuses[agent.id] || "offline"} />
-              <div className="flex-1 min-w-0">
-                <div className="truncate text-[13px]">{agent.name}</div>
-                <div className="text-[11px] text-zinc-500 truncate">
-                  {agent.role}
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
-      </ScrollArea>
-
-      {/* Footer */}
-      <Separator className="bg-zinc-800" />
-      <div className="p-3 flex items-center gap-2">
-        <LayoutDashboard className="h-3.5 w-3.5 text-zinc-500" />
-        <span className="text-[11px] text-zinc-500">OpenClaw v2026.2.3</span>
-      </div>
-    </aside>
+      </CommandList>
+    </CommandDialog>
   );
 }

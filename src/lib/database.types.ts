@@ -24,10 +24,12 @@ export type EventType =
   | "system"
   | "mission_created"
   | "mission_updated"
-  | "agent_push";
+  | "agent_push"
+  | "cost_event";
 
 export type MissionStatus = "backlog" | "in_progress" | "review" | "done";
 export type MissionPriority = "low" | "medium" | "high" | "critical";
+export type CostProvider = "anthropic" | "openai" | "google" | "xai" | "together" | "other";
 
 export interface Database {
   public: {
@@ -42,6 +44,7 @@ export interface Database {
           color: string;
           is_hand: boolean;
           brain_id: string | null;
+          avatar_url: string | null;
           last_seen_at: string | null;
           created_at: string;
           updated_at: string;
@@ -122,6 +125,22 @@ export interface Database {
         };
         Insert: Omit<Database["public"]["Tables"]["mission_comments"]["Row"], "id" | "created_at">;
         Update: Partial<Database["public"]["Tables"]["mission_comments"]["Insert"]>;
+      };
+      cost_events: {
+        Row: {
+          id: string;
+          agent_id: string | null;
+          model: string;
+          provider: CostProvider;
+          input_tokens: number;
+          output_tokens: number;
+          cost_usd: number;
+          session_id: string | null;
+          occurred_at: string;
+          created_at: string;
+        };
+        Insert: Omit<Database["public"]["Tables"]["cost_events"]["Row"], "id" | "created_at">;
+        Update: Partial<Database["public"]["Tables"]["cost_events"]["Insert"]>;
       };
     };
   };

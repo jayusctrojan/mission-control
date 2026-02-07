@@ -1,28 +1,51 @@
 "use client";
 
+import { useRef } from "react";
 import { BRAIN_AGENTS, HAND_AGENTS, type AgentInfo } from "@/lib/agents";
 import { useAgentStatuses } from "@/hooks/use-agent-statuses";
+import type { AgentData } from "@/hooks/use-agent-statuses";
+import { AgentAvatar } from "@/components/agent-avatar";
 import { AgentDot } from "@/components/agent-dot";
 import { Badge } from "@/components/ui/badge";
 
-function AgentCard({ agent, status }: { agent: AgentInfo; status: string }) {
+function AgentCard({
+  agent,
+  agentData,
+  onUpload,
+}: {
+  agent: AgentInfo;
+  agentData: AgentData;
+  onUpload: (agentId: string, file: File) => void;
+}) {
+  const fileRef = useRef<HTMLInputElement>(null);
   const hands = HAND_AGENTS.filter((h) => h.brainId === agent.id);
 
   return (
     <div className="rounded-lg border border-zinc-800 bg-zinc-900/50 p-4 hover:border-zinc-700 transition-colors">
       <div className="flex items-center gap-3">
-        <div
-          className="h-10 w-10 rounded-full flex items-center justify-center text-sm font-bold"
-          style={{ backgroundColor: agent.color + "20", color: agent.color }}
-        >
-          {agent.emoji}
-        </div>
+        <AgentAvatar
+          agent={agent}
+          status={agentData.status}
+          avatarUrl={agentData.avatarUrl}
+          size="lg"
+          onClick={() => fileRef.current?.click()}
+        />
+        <input
+          ref={fileRef}
+          type="file"
+          accept="image/jpeg,image/png,image/webp,image/gif"
+          className="hidden"
+          onChange={(e) => {
+            const file = e.target.files?.[0];
+            if (file) onUpload(agent.id, file);
+          }}
+        />
         <div className="flex-1">
           <div className="flex items-center gap-2">
             <span className="text-sm font-medium text-zinc-100">
               {agent.name}
             </span>
-            <AgentDot color={agent.color} status={status as "online" | "offline"} />
+            <AgentDot color={agent.color} status={agentData.status} />
           </div>
           <div className="text-xs text-zinc-500">{agent.role}</div>
         </div>
@@ -47,7 +70,21 @@ function AgentCard({ agent, status }: { agent: AgentInfo; status: string }) {
 }
 
 export default function AgentsPage() {
-  const statuses = useAgentStatuses();
+  const agentData = useAgentStatuses();
+
+  async function handleUpload(agentId: string, file: File) {
+    const formData = new FormData();
+    formData.append("file", file);
+
+    const res = await fetch(`/api/agents/${agentId}/avatar`, {
+      method: "POST",
+      body: formData,
+    });
+
+    if (!res.ok) {
+      console.error("Avatar upload failed:", await res.text());
+    }
+  }
 
   return (
     <div className="p-6 max-w-4xl space-y-6">
@@ -63,7 +100,8 @@ export default function AgentsPage() {
           <AgentCard
             key={agent.id}
             agent={agent}
-            status={statuses[agent.id] || "offline"}
+            agentData={agentData[agent.id] ?? { status: "offline", avatarUrl: null }}
+            onUpload={handleUpload}
           />
         ))}
       </div>

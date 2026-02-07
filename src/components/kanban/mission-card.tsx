@@ -3,7 +3,8 @@
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { Badge } from "@/components/ui/badge";
-import { AgentDot } from "@/components/agent-dot";
+import { AgentAvatar } from "@/components/agent-avatar";
+import { useAgentStatuses } from "@/hooks/use-agent-statuses";
 import { getAgent } from "@/lib/agents";
 import type { Database, MissionPriority } from "@/lib/database.types";
 
@@ -38,9 +39,11 @@ export function MissionCard({
     opacity: isDragging ? 0.5 : 1,
   };
 
+  const agentData = useAgentStatuses();
   const agent = mission.assigned_agent_id
     ? getAgent(mission.assigned_agent_id)
     : null;
+  const data = mission.assigned_agent_id ? agentData[mission.assigned_agent_id] : null;
 
   return (
     <div
@@ -63,7 +66,12 @@ export function MissionCard({
         </Badge>
         {agent && (
           <div className="flex items-center gap-1.5">
-            <AgentDot color={agent.color} status="online" />
+            <AgentAvatar
+              agent={agent}
+              status={data?.status ?? "offline"}
+              avatarUrl={data?.avatarUrl ?? null}
+              size="sm"
+            />
             <span className="text-[11px] text-zinc-500">{agent.name}</span>
           </div>
         )}

@@ -3,6 +3,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { Sidebar } from "@/components/sidebar";
 import { CommandPalette } from "@/components/command-palette";
+import { NotificationListener } from "@/components/notification-listener";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -33,6 +34,7 @@ export default function RootLayout({
           <Sidebar />
           <main className="flex-1 overflow-y-auto">{children}</main>
           <CommandPalette />
+          <NotificationListener />
         </div>
       </body>
     </html>

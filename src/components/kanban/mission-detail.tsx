@@ -23,6 +23,8 @@ import { Separator } from "@/components/ui/separator";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Trash2, Send } from "lucide-react";
 import { BRAIN_AGENTS, getAgent } from "@/lib/agents";
+import { AgentAvatar } from "@/components/agent-avatar";
+import { useAgentStatuses } from "@/hooks/use-agent-statuses";
 import {
   updateMission,
   deleteMission,
@@ -53,6 +55,7 @@ export function MissionDetail({
   const [comments, setComments] = useState<CommentRow[]>([]);
   const [newComment, setNewComment] = useState("");
   const [saving, setSaving] = useState(false);
+  const agentData = useAgentStatuses();
 
   useEffect(() => {
     if (mission) {
@@ -65,6 +68,9 @@ export function MissionDetail({
   }, [mission]);
 
   if (!mission) return null;
+
+  const assignedAgent = mission.assigned_agent_id ? getAgent(mission.assigned_agent_id) : null;
+  const assignedData = mission.assigned_agent_id ? agentData[mission.assigned_agent_id] : null;
 
   async function handleSave() {
     if (!mission) return;
@@ -106,6 +112,19 @@ export function MissionDetail({
         </DialogHeader>
 
         <div className="space-y-4">
+          {/* Assigned agent header */}
+          {assignedAgent && (
+            <div className="flex items-center gap-2">
+              <AgentAvatar
+                agent={assignedAgent}
+                status={assignedData?.status ?? "offline"}
+                avatarUrl={assignedData?.avatarUrl ?? null}
+                size="md"
+              />
+              <span className="text-sm text-zinc-300">{assignedAgent.name}</span>
+            </div>
+          )}
+
           <Input
             value={title}
             onChange={(e) => setTitle(e.target.value)}
@@ -176,12 +195,21 @@ export function MissionDetail({
                 )}
                 {comments.map((c) => {
                   const agent = c.agent_id ? getAgent(c.agent_id) : null;
+                  const data = c.agent_id ? agentData[c.agent_id] : null;
                   return (
                     <div
                       key={c.id}
                       className="rounded-md bg-zinc-800/50 px-3 py-2"
                     >
                       <div className="flex items-center gap-2 mb-1">
+                        {agent && (
+                          <AgentAvatar
+                            agent={agent}
+                            status={data?.status ?? "offline"}
+                            avatarUrl={data?.avatarUrl ?? null}
+                            size="sm"
+                          />
+                        )}
                         <span
                           className="text-[11px] font-medium"
                           style={{ color: agent?.color ?? "#71717a" }}

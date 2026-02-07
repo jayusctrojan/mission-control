@@ -6,7 +6,9 @@
     "dev": "doppler run -- next dev",
     "build": "doppler run -- next build",
     "start": "doppler run -- next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "build:render": "next build",
+    "start:render": "next start"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",

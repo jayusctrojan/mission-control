@@ -14,6 +14,7 @@ import {
   Target,
   PenLine,
   Send,
+  DollarSign,
   type LucideIcon,
 } from "lucide-react";
 import type { EventType, EventSeverity } from "@/lib/database.types";
@@ -35,6 +36,7 @@ const TYPE_ICONS: Record<EventType, LucideIcon> = {
   mission_created: Target,
   mission_updated: PenLine,
   agent_push: Send,
+  cost_event: DollarSign,
 };
 
 const SEVERITY_COLORS: Record<EventSeverity, string> = {

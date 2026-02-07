@@ -4,23 +4,28 @@ import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
 import type { AgentStatus } from "@/lib/database.types";
 
-type StatusMap = Record<string, AgentStatus>;
+export interface AgentData {
+  status: AgentStatus;
+  avatarUrl: string | null;
+}
 
-export function useAgentStatuses(): StatusMap {
-  const [statuses, setStatuses] = useState<StatusMap>({});
+type AgentDataMap = Record<string, AgentData>;
+
+export function useAgentStatuses(): AgentDataMap {
+  const [data, setData] = useState<AgentDataMap>({});
 
   useEffect(() => {
     // Initial fetch
     supabase
       .from("agents")
-      .select("id, status")
-      .then(({ data }) => {
-        if (data) {
-          const map: StatusMap = {};
-          for (const row of data as { id: string; status: string }[]) {
-            map[row.id] = row.status as AgentStatus;
+      .select("id, status, avatar_url")
+      .then(({ data: rows }) => {
+        if (rows) {
+          const map: AgentDataMap = {};
+          for (const row of rows as { id: string; status: string; avatar_url: string | null }[]) {
+            map[row.id] = { status: row.status as AgentStatus, avatarUrl: row.avatar_url };
           }
-          setStatuses(map);
+          setData(map);
         }
       });
 
@@ -31,8 +36,15 @@ export function useAgentStatuses(): StatusMap {
         "postgres_changes",
         { event: "UPDATE", schema: "public", table: "agents" },
         (payload) => {
-          const { id, status } = payload.new as { id: string; status: AgentStatus };
-          setStatuses((prev) => ({ ...prev, [id]: status }));
+          const { id, status, avatar_url } = payload.new as {
+            id: string;
+            status: AgentStatus;
+            avatar_url: string | null;
+          };
+          setData((prev) => ({
+            ...prev,
+            [id]: { status, avatarUrl: avatar_url },
+          }));
         }
       )
       .subscribe();
@@ -42,5 +54,5 @@ export function useAgentStatuses(): StatusMap {
     };
   }, []);
 
-  return statuses;
+  return data;
 }

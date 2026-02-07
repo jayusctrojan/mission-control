@@ -2,14 +2,16 @@
 
 import { formatDistanceToNow } from "date-fns";
 import { useEvents } from "@/hooks/use-events";
+import { useAgentStatuses } from "@/hooks/use-agent-statuses";
 import { getAgent } from "@/lib/agents";
 import { EventIcon } from "@/components/event-icon";
-import { AgentDot } from "@/components/agent-dot";
+import { AgentAvatar } from "@/components/agent-avatar";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import type { EventType, EventSeverity } from "@/lib/database.types";
 
 export function ActivityFeed() {
   const { events, loading } = useEvents(100);
+  const agentData = useAgentStatuses();
 
   if (loading) {
     return (
@@ -35,6 +37,7 @@ export function ActivityFeed() {
       <div className="space-y-1">
         {events.map((event) => {
           const agent = event.agent_id ? getAgent(event.agent_id) : null;
+          const data = event.agent_id ? agentData[event.agent_id] : null;
           const time = formatDistanceToNow(new Date(event.occurred_at), {
             addSuffix: true,
           });
@@ -45,15 +48,20 @@ export function ActivityFeed() {
               className="flex items-start gap-3 rounded-md px-3 py-2.5 hover:bg-zinc-800/40 transition-colors group"
             >
               {/* Agent avatar */}
-              <div className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-zinc-800 text-xs font-medium"
-                style={{ color: agent?.color ?? "#71717a" }}
-              >
-                {agent ? (
-                  <AgentDot color={agent.color} status="online" size="md" />
-                ) : (
+              {agent ? (
+                <div className="mt-0.5">
+                  <AgentAvatar
+                    agent={agent}
+                    status={data?.status ?? "offline"}
+                    avatarUrl={data?.avatarUrl ?? null}
+                    size="md"
+                  />
+                </div>
+              ) : (
+                <div className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-zinc-800 text-xs font-medium">
                   <span className="text-zinc-500">SYS</span>
-                )}
-              </div>
+                </div>
+              )}
 
               {/* Content */}
               <div className="flex-1 min-w-0">
