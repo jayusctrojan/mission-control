@@ -141,7 +141,7 @@ export function Sidebar() {
       <div className="p-3 flex items-center justify-between">
         <div className="flex items-center gap-2">
           <LayoutDashboard className="h-3.5 w-3.5 text-zinc-500" />
-          <span className="text-[11px] text-zinc-500">OpenClaw v2026.2.3</span>
+          <span className="text-[11px] text-zinc-500">OpenClaw v2026.2.6</span>
         </div>
         <button
           onClick={() => setNotifOpen(true)}
