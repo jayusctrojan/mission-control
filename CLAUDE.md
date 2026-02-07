@@ -12,6 +12,7 @@ AI-powered developer dashboard that ingests Claude Code session logs and display
 - **Package manager**: npm
 - **Hosting**: Render (Next.js dashboard only; ingestion runs locally)
 - **CI/CD**: GitHub Actions with CodeRabbit auto-review + Claude Code auto-fix loop
+- **Custom commands**: `.claude/commands/` — project-level slash commands
 
 ## Project Structure
 
@@ -75,3 +76,14 @@ supabase/           # Migrations and config
 - `markdown_ref` in markdown-sync uses `filePath:title` (no status) to prevent duplicates when tasks move
 - Calendar event counts use local date conversion (not UTC slice) to avoid off-by-one near midnight
 - Kanban deep-link (`?detail=id`) only fires once via `deepLinkHandled` flag to prevent re-opening on realtime updates
+
+## PR Workflow
+
+After pushing to a PR, always run `/review-fix` to resolve CodeRabbit feedback. This:
+1. Fetches all CodeRabbit inline comments from the PR
+2. Fixes every issue (critical, major, minor, nitpicks)
+3. Verifies TypeScript compiles, commits once, pushes once
+4. Waits for re-review, repeats up to 3 rounds
+5. Posts a summary comment on the PR after each round
+
+The CI workflow (`.github/workflows/claude.yml`) also runs this automatically via `resolve-coderabbit` job, but `/review-fix` is the manual fallback when CI can't run (e.g., missing API key in Actions).
