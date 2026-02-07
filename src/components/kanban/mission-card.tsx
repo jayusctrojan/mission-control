@@ -4,7 +4,7 @@ import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { Badge } from "@/components/ui/badge";
 import { AgentAvatar } from "@/components/agent-avatar";
-import { useAgentStatuses } from "@/hooks/use-agent-statuses";
+import type { AgentData } from "@/hooks/use-agent-statuses";
 import { getAgent } from "@/lib/agents";
 import type { Database, MissionPriority } from "@/lib/database.types";
 
@@ -19,9 +19,11 @@ const PRIORITY_COLORS: Record<MissionPriority, string> = {
 
 export function MissionCard({
   mission,
+  agentData,
   onClick,
 }: {
   mission: MissionRow;
+  agentData: Record<string, AgentData>;
   onClick: () => void;
 }) {
   const {
@@ -39,7 +41,6 @@ export function MissionCard({
     opacity: isDragging ? 0.5 : 1,
   };
 
-  const agentData = useAgentStatuses();
   const agent = mission.assigned_agent_id
     ? getAgent(mission.assigned_agent_id)
     : null;

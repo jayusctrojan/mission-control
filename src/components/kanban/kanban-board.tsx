@@ -15,6 +15,7 @@ import {
 } from "@dnd-kit/core";
 import { arrayMove } from "@dnd-kit/sortable";
 import { useMissions } from "@/hooks/use-missions";
+import { useAgentStatuses } from "@/hooks/use-agent-statuses";
 import { updateMissionStatus } from "@/app/missions/actions";
 import { KanbanColumn } from "./kanban-column";
 import { MissionCard } from "./mission-card";
@@ -28,6 +29,7 @@ const STATUSES: MissionStatus[] = ["backlog", "in_progress", "review", "done"];
 
 export function KanbanBoard() {
   const { missions, setMissions, loading } = useMissions();
+  const agentData = useAgentStatuses();
   const searchParams = useSearchParams();
   const [activeId, setActiveId] = useState<string | null>(null);
   const [detailMission, setDetailMission] = useState<MissionRow | null>(null);
@@ -206,6 +208,7 @@ export function KanbanBoard() {
               key={status}
               status={status}
               missions={grouped[status]}
+              agentData={agentData}
               onAdd={() => handleAddToColumn(status)}
               onCardClick={handleCardClick}
             />
@@ -215,7 +218,7 @@ export function KanbanBoard() {
         <DragOverlay>
           {activeMission ? (
             <div className="rotate-2 opacity-90">
-              <MissionCard mission={activeMission} onClick={() => {}} />
+              <MissionCard mission={activeMission} agentData={agentData} onClick={() => {}} />
             </div>
           ) : null}
         </DragOverlay>

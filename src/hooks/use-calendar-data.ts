@@ -62,10 +62,18 @@ export function useCalendarData(month: Date) {
           .from("events")
           .select("occurred_at")
           .gte("occurred_at", rangeStartISO)
-          .lte("occurred_at", rangeEndISO),
+          .lte("occurred_at", rangeEndISO)
+          .limit(5000),
       ]);
 
       if (cancelled) return;
+
+      if (missionsRes.error) {
+        console.error("Failed to fetch missions:", missionsRes.error.message);
+      }
+      if (eventsRes.error) {
+        console.error("Failed to fetch events:", eventsRes.error.message);
+      }
 
       if (missionsRes.data) {
         setMissions(missionsRes.data as MissionRow[]);

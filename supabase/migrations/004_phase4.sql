@@ -52,11 +52,9 @@ VALUES ('avatars', 'avatars', true, 2097152, ARRAY['image/jpeg', 'image/png', 'i
 ON CONFLICT (id) DO NOTHING;
 
 -- Storage policies for avatars bucket
+-- Public read for anyone, but only service_role can insert/modify (uploads go through API route)
 CREATE POLICY "public_read_avatars" ON storage.objects
-  FOR SELECT TO anon USING (bucket_id = 'avatars');
-
-CREATE POLICY "public_insert_avatars" ON storage.objects
-  FOR INSERT TO anon WITH CHECK (bucket_id = 'avatars');
+  FOR SELECT TO anon, authenticated USING (bucket_id = 'avatars');
 
 CREATE POLICY "service_role_all_avatars" ON storage.objects
   FOR ALL TO service_role USING (bucket_id = 'avatars') WITH CHECK (bucket_id = 'avatars');

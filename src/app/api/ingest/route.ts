@@ -99,7 +99,10 @@ export async function POST(req: NextRequest) {
       occurred_at: e.occurred_at ?? new Date().toISOString(),
     }));
 
-    await supabase.from("events").insert(eventRows);
+    const { error: mirrorError } = await supabase.from("events").insert(eventRows);
+    if (mirrorError) {
+      console.error("Cost event activity-feed mirror insert failed:", mirrorError.message);
+    }
     insertedCosts = costRows.length;
   }
 

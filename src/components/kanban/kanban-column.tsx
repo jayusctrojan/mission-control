@@ -9,6 +9,7 @@ import { Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { MissionCard } from "./mission-card";
+import type { AgentData } from "@/hooks/use-agent-statuses";
 import type { Database, MissionStatus } from "@/lib/database.types";
 
 type MissionRow = Database["public"]["Tables"]["missions"]["Row"];
@@ -30,11 +31,13 @@ const COLUMN_COLORS: Record<MissionStatus, string> = {
 export function KanbanColumn({
   status,
   missions,
+  agentData,
   onAdd,
   onCardClick,
 }: {
   status: MissionStatus;
   missions: MissionRow[];
+  agentData: Record<string, AgentData>;
   onAdd: () => void;
   onCardClick: (mission: MissionRow) => void;
 }) {
@@ -78,6 +81,7 @@ export function KanbanColumn({
               <MissionCard
                 key={mission.id}
                 mission={mission}
+                agentData={agentData}
                 onClick={() => onCardClick(mission)}
               />
             ))}

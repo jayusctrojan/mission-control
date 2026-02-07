@@ -45,7 +45,13 @@ function loadPrefs(): NotificationPrefs {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (!raw) return DEFAULT_PREFS;
-    return { ...DEFAULT_PREFS, ...JSON.parse(raw) };
+    const stored = JSON.parse(raw) as Partial<NotificationPrefs>;
+    return {
+      ...DEFAULT_PREFS,
+      ...stored,
+      eventTypes: { ...DEFAULT_PREFS.eventTypes, ...(stored.eventTypes ?? {}) },
+      severities: { ...DEFAULT_PREFS.severities, ...(stored.severities ?? {}) },
+    };
   } catch {
     return DEFAULT_PREFS;
   }

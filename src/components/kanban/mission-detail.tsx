@@ -83,6 +83,8 @@ export function MissionDetail({
         assigned_agent_id: agentId === "none" ? null : agentId,
       });
       onOpenChange(false);
+    } catch (err) {
+      console.error("Save failed:", err);
     } finally {
       setSaving(false);
     }
@@ -101,10 +103,14 @@ export function MissionDetail({
 
   async function handleAddComment() {
     if (!mission || !newComment.trim()) return;
-    await addComment(mission.id, newComment.trim());
-    setNewComment("");
-    const updated = await getComments(mission.id);
-    setComments(updated);
+    try {
+      await addComment(mission.id, newComment.trim());
+      setNewComment("");
+      const updated = await getComments(mission.id);
+      setComments(updated);
+    } catch (err) {
+      console.error("Failed to add comment:", err);
+    }
   }
 
   return (

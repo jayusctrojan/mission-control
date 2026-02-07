@@ -23,7 +23,8 @@ CREATE TABLE events (
   event_type TEXT NOT NULL CHECK (event_type IN (
     'bot_start', 'bot_stop', 'heartbeat', 'reload', 'config_change',
     'plugin_load', 'health_alert', 'gateway_restart', 'message',
-    'session_start', 'session_end', 'error', 'system'
+    'session_start', 'session_end', 'error', 'system',
+    'mission_created', 'mission_updated', 'agent_push', 'cost_event'
   )),
   source TEXT NOT NULL DEFAULT 'gateway',
   title TEXT NOT NULL,

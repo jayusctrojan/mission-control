@@ -84,7 +84,7 @@ async function syncMissions(filePath: string): Promise<void> {
       .single();
 
     if (existing) {
-      await supabase
+      const { error: updateErr } = await supabase
         .from("missions")
         .update({
           title: mission.title,
@@ -92,8 +92,11 @@ async function syncMissions(filePath: string): Promise<void> {
           completed_at: mission.completed ? new Date().toISOString() : null,
         })
         .eq("id", existing.id);
+      if (updateErr) {
+        console.error(`[markdown-sync] Update failed for "${mission.title}":`, updateErr.message);
+      }
     } else {
-      await supabase.from("missions").insert({
+      const { error: insertErr } = await supabase.from("missions").insert({
         title: mission.title,
         status: mission.status,
         source: "markdown",
@@ -101,6 +104,9 @@ async function syncMissions(filePath: string): Promise<void> {
         sort_order: Date.now(),
         completed_at: mission.completed ? new Date().toISOString() : null,
       });
+      if (insertErr) {
+        console.error(`[markdown-sync] Insert failed for "${mission.title}":`, insertErr.message);
+      }
     }
   }
 
