@@ -27,6 +27,7 @@ function describeCron(expr: string): string {
   // Specific day of week
   const dayNames = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
   if (dow !== "*") {
+    if (!/^\d+$/.test(dow)) return expr;
     const dayIdx = parseInt(dow, 10);
     const dayName = dayNames[dayIdx] || dow;
     if (!/^\d+$/.test(hour) || !/^\d+$/.test(min)) return `${dayName}s — ${expr}`;
@@ -130,10 +131,16 @@ export function useScheduledTasks() {
             cronDescription: description,
           });
         } else {
+          const fmt = new Intl.DateTimeFormat("en-US", {
+            hour: "2-digit",
+            minute: "2-digit",
+            hour12: false,
+            timeZone: task.schedule_tz,
+          });
           for (const occ of occurrences) {
             result.push({
               task,
-              time: `${String(occ.getHours()).padStart(2, "0")}:${String(occ.getMinutes()).padStart(2, "0")}`,
+              time: fmt.format(occ),
               runCount: 1,
               cronDescription: description,
             });

@@ -60,6 +60,7 @@ export async function syncCronJobs(filePath: string): Promise<void> {
 
   console.log(`[cron-sync] Syncing ${cronJobs.length} cron jobs...`);
 
+  // Phase 1: Upsert tasks with NULL agent_id (FK-safe)
   let synced = 0;
   for (const job of cronJobs) {
     try {
@@ -69,7 +70,7 @@ export async function syncCronJobs(filePath: string): Promise<void> {
           name: job.name,
           schedule_expr: job.schedule,
           schedule_tz: "America/Chicago",
-          agent_id: job.agent || null,
+          agent_id: null,
           source: "openclaw" as const,
           enabled: job.enabled !== false,
           description: job.description || null,
@@ -84,6 +85,21 @@ export async function syncCronJobs(filePath: string): Promise<void> {
       }
     } catch (err) {
       console.error(`[cron-sync] Failed to upsert ${job.name}:`, err);
+    }
+  }
+
+  // Phase 2: Reconcile agent_ids where agents exist (safe no-op for missing agents)
+  const agentJobs = cronJobs.filter((j) => j.agent);
+  for (const job of agentJobs) {
+    try {
+      await supabase
+        .from("scheduled_tasks")
+        .update({ agent_id: job.agent! })
+        .eq("external_id", job.id)
+        .eq("source", "openclaw")
+        .in("agent_id", [null, job.agent!]);
+    } catch {
+      // Agent doesn't exist yet — FK violation expected, silently skip
     }
   }
 
