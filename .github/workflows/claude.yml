@@ -16,8 +16,7 @@ jobs:
   resolve-coderabbit:
     if: >
       github.event_name == 'pull_request_review' &&
-      github.event.review.user.login == 'coderabbitai[bot]' &&
-      github.event.review.state != 'approved'
+      github.event.review.user.login == 'coderabbitai[bot]'
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -27,12 +26,47 @@ jobs:
       group: claude-pr-${{ github.event.pull_request.number }}
       cancel-in-progress: true
     steps:
-      - name: Check iteration count
-        id: check-iterations
+      - name: Analyze review severity
+        id: analyze
         uses: actions/github-script@v7
         with:
           script: |
             const prNumber = context.payload.pull_request.number;
+            const reviewId = context.payload.review.id;
+
+            // Fetch the review comments from this specific review
+            const { data: comments } = await github.rest.pulls.listCommentsForReview({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: prNumber,
+              review_id: reviewId,
+              per_page: 100,
+            });
+
+            // Also fetch the review body
+            const reviewBody = context.payload.review.body || '';
+
+            // Count severity levels by parsing CodeRabbit's emoji markers
+            // 🔴 Critical, 🟠 Major, 🟡 Minor, 🟢 Nitpick/Praise
+            let critical = 0;
+            let major = 0;
+            let minor = 0;
+            let total = comments.length;
+
+            for (const c of comments) {
+              const body = c.body || '';
+              if (body.includes('🔴') || body.toLowerCase().includes('critical')) {
+                critical++;
+              } else if (body.includes('🟠') || body.toLowerCase().includes('| _🟠 major_')) {
+                major++;
+              } else {
+                minor++;
+              }
+            }
+
+            console.log(`Review has ${total} comments: ${critical} critical, ${major} major, ${minor} minor`);
+
+            // Check iteration count
             const { data: labels } = await github.rest.issues.listLabelsOnIssue({
               owner: context.repo.owner,
               repo: context.repo.repo,
@@ -41,33 +75,66 @@ jobs:
             const resolveLabels = labels.filter(l => l.name.startsWith('claude-resolve-'));
             const count = resolveLabels.length;
             console.log(`Current iteration count: ${count}`);
+
+            // Decide whether to skip
+            let shouldSkip = false;
+            let skipReason = '';
+
             if (count >= 3) {
-              await github.rest.issues.createComment({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                issue_number: prNumber,
-                body: '## Claude Code: iteration limit reached\n\nI\'ve attempted to resolve CodeRabbit feedback 3 times but issues remain. A human should review the remaining comments and fix manually.\n\nTo reset the counter, remove the `claude-resolve-*` labels from this PR.',
-              });
+              shouldSkip = true;
+              skipReason = 'iteration_limit';
+            } else if (total === 0) {
+              shouldSkip = true;
+              skipReason = 'no_comments';
+            } else if (critical === 0 && major === 0) {
+              shouldSkip = true;
+              skipReason = 'only_minor';
             }
+
+            if (shouldSkip) {
+              let message = '';
+              if (skipReason === 'iteration_limit') {
+                message = '## Claude Code: iteration limit reached\n\nI\'ve attempted to resolve CodeRabbit feedback 3 times. A human should review any remaining comments.\n\nTo reset the counter, remove the `claude-resolve-*` labels from this PR.';
+              } else if (skipReason === 'no_comments') {
+                message = '## Claude Code: CodeRabbit review clean\n\nNo inline comments found in this review. No action needed.';
+              } else if (skipReason === 'only_minor') {
+                message = `## Claude Code: only minor issues remain\n\nCodeRabbit's latest review has ${minor} comment(s), all minor severity (🟡). These are acceptable for merge — no auto-fix needed.\n\nA human can address these in a follow-up if desired.`;
+              }
+
+              if (message) {
+                await github.rest.issues.createComment({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  issue_number: prNumber,
+                  body: message,
+                });
+              }
+            }
+
             core.setOutput('count', count);
-            core.setOutput('should_skip', count >= 3);
+            core.setOutput('should_skip', shouldSkip);
+            core.setOutput('critical', critical);
+            core.setOutput('major', major);
+            core.setOutput('minor', minor);
+            core.setOutput('total', total);
 
       - name: Checkout PR branch
-        if: steps.check-iterations.outputs.should_skip != 'true'
+        if: steps.analyze.outputs.should_skip != 'true'
         uses: actions/checkout@v4
         with:
           ref: ${{ github.event.pull_request.head.ref }}
           fetch-depth: 0
 
       - name: Resolve CodeRabbit comments
-        if: steps.check-iterations.outputs.should_skip != 'true'
+        if: steps.analyze.outputs.should_skip != 'true'
         uses: anthropics/claude-code-action@v1
         with:
           anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
           prompt: |
-            A CodeRabbit review was just submitted on this PR with state "${{ github.event.review.state }}".
+            A CodeRabbit review was just submitted on this PR.
+            It has ${{ steps.analyze.outputs.critical }} critical, ${{ steps.analyze.outputs.major }} major, and ${{ steps.analyze.outputs.minor }} minor issues.
 
-            Your job: fix EVERY issue CodeRabbit raised — bugs, style, nitpicks, naming, all of it.
+            Your job: fix all critical and major issues. Minor issues are optional but fix them if straightforward.
 
             ## IMPORTANT: Batch all fixes, single push
 
@@ -76,7 +143,7 @@ jobs:
 
             ## Steps
 
-            1. Read ALL unresolved review comments on this PR:
+            1. Read ALL review comments on this PR:
                ```
                gh api repos/${{ github.repository }}/pulls/${{ github.event.pull_request.number }}/comments --paginate
                gh api repos/${{ github.repository }}/pulls/${{ github.event.pull_request.number }}/reviews/${{ github.event.review.id }}/comments --paginate
@@ -89,11 +156,11 @@ jobs:
 
             3. Read and understand ALL comments before making any changes.
 
-            4. Fix every issue in the codebase. Apply ALL suggestions — do not skip nitpicks.
+            4. Fix every critical (🔴) and major (🟠) issue. Also fix minor (🟡) issues if the fix is straightforward.
                Work through all fixes WITHOUT committing or pushing between them.
 
             5. After ALL fixes are applied, stage everything and create a SINGLE commit:
-               "fix: resolve CodeRabbit review feedback (round N)"
+               "fix: resolve CodeRabbit review feedback (round ${{ steps.analyze.outputs.count }})"
 
             6. Push ONCE to the PR branch.
 
@@ -101,7 +168,7 @@ jobs:
                ```
                gh pr comment ${{ github.event.pull_request.number }} --body "## Claude Code: resolved CodeRabbit feedback
 
-               **Round ${{ steps.check-iterations.outputs.count }} + 1 of 3**
+               **Round $((${{ steps.analyze.outputs.count }} + 1)) of 3**
 
                ### Changes made:
                - [list each fix]
@@ -110,12 +177,12 @@ jobs:
                ```
 
       - name: Add iteration label
-        if: steps.check-iterations.outputs.should_skip != 'true'
+        if: steps.analyze.outputs.should_skip != 'true'
         uses: actions/github-script@v7
         with:
           script: |
             const prNumber = context.payload.pull_request.number;
-            const count = parseInt('${{ steps.check-iterations.outputs.count }}') + 1;
+            const count = parseInt('${{ steps.analyze.outputs.count }}') + 1;
             const label = `claude-resolve-${count}`;
             try {
               await github.rest.issues.createLabel({
