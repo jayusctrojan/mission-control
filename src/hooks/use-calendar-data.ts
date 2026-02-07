@@ -184,7 +184,7 @@ export function useCalendarData(month: Date) {
     // Compute scheduled task stats
     const tasksToday = getTaskCountForDay(now);
     let tasksThisWeek = 0;
-    const weekDays = eachDayOfInterval({ start: now, end: weekEnd });
+    const weekDays = eachDayOfInterval({ start: now, end: addDays(now, 6) });
     for (const d of weekDays) {
       tasksThisWeek += getTaskCountForDay(d);
     }

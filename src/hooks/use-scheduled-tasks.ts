@@ -29,6 +29,7 @@ function describeCron(expr: string): string {
   if (dow !== "*") {
     const dayIdx = parseInt(dow, 10);
     const dayName = dayNames[dayIdx] || dow;
+    if (!/^\d+$/.test(hour) || !/^\d+$/.test(min)) return `${dayName}s — ${expr}`;
     return `${dayName}s at ${hour.padStart(2, "0")}:${min.padStart(2, "0")}`;
   }
   // Specific day of month
@@ -36,6 +37,7 @@ function describeCron(expr: string): string {
     const suffix = dom === "1" || dom === "21" || dom === "31" ? "st" :
                    dom === "2" || dom === "22" ? "nd" :
                    dom === "3" || dom === "23" ? "rd" : "th";
+    if (!/^\d+$/.test(hour) || !/^\d+$/.test(min)) return `${dom}${suffix} of month — ${expr}`;
     return `${dom}${suffix} of month at ${hour.padStart(2, "0")}:${min.padStart(2, "0")}`;
   }
   // Daily — guard against wildcards/steps in hour or min
@@ -52,8 +54,8 @@ function getOccurrencesForDay(task: ScheduledTaskRow, date: Date): Date[] {
     dayEnd.setHours(23, 59, 59, 999);
 
     const occurrences: Date[] = [];
-    // Get enough future runs to cover this day (max 200 for high-frequency)
-    const runs = cron.nextRuns(200, dayStart);
+    // Get enough future runs to cover this day (300 covers */5 = 288/day)
+    const runs = cron.nextRuns(300, dayStart);
     for (const run of runs) {
       if (run > dayEnd) break;
       occurrences.push(run);
@@ -82,6 +84,7 @@ export function useScheduledTasks() {
         if (cancelled) return;
         if (error) {
           console.error("Failed to fetch scheduled tasks:", error.message);
+          return;
         }
         setTasks((data as ScheduledTaskRow[]) ?? []);
       } catch (err) {

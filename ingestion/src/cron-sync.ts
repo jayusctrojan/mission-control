@@ -19,13 +19,23 @@ export async function syncCronJobs(filePath: string): Promise<void> {
   try {
     raw = readFileSync(filePath, "utf-8");
   } catch (err) {
-    console.log(`[cron-sync] ${filePath} not found, skipping`);
+    const code = (err as NodeJS.ErrnoException).code;
+    if (code === "ENOENT") {
+      console.log(`[cron-sync] ${filePath} not found, skipping`);
+    } else {
+      console.error(`[cron-sync] Failed to read ${filePath}:`, err);
+    }
     return;
   }
 
   let jobs: CronJob[];
   try {
-    jobs = JSON.parse(raw);
+    const parsed = JSON.parse(raw);
+    if (!Array.isArray(parsed)) {
+      console.error(`[cron-sync] Expected array in ${filePath}, got ${typeof parsed}`);
+      return;
+    }
+    jobs = parsed;
   } catch (err) {
     console.error(`[cron-sync] Failed to parse ${filePath}:`, err);
     return;
@@ -50,6 +60,7 @@ export async function syncCronJobs(filePath: string): Promise<void> {
 
   console.log(`[cron-sync] Syncing ${cronJobs.length} cron jobs...`);
 
+  let synced = 0;
   for (const job of cronJobs) {
     try {
       const { error } = await supabase.from("scheduled_tasks").upsert(
@@ -68,11 +79,13 @@ export async function syncCronJobs(filePath: string): Promise<void> {
 
       if (error) {
         console.error(`[cron-sync] Failed to upsert ${job.name}:`, error.message);
+      } else {
+        synced++;
       }
     } catch (err) {
       console.error(`[cron-sync] Failed to upsert ${job.name}:`, err);
     }
   }
 
-  console.log(`[cron-sync] Synced ${cronJobs.length} cron jobs`);
+  console.log(`[cron-sync] Synced ${synced}/${cronJobs.length} cron jobs`);
 }
