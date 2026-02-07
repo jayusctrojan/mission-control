@@ -86,9 +86,6 @@ jobs:
             } else if (total === 0) {
               shouldSkip = true;
               skipReason = 'no_comments';
-            } else if (critical === 0 && major === 0) {
-              shouldSkip = true;
-              skipReason = 'only_minor';
             }
 
             if (shouldSkip) {
@@ -96,9 +93,7 @@ jobs:
               if (skipReason === 'iteration_limit') {
                 message = '## Claude Code: iteration limit reached\n\nI\'ve attempted to resolve CodeRabbit feedback 3 times. A human should review any remaining comments.\n\nTo reset the counter, remove the `claude-resolve-*` labels from this PR.';
               } else if (skipReason === 'no_comments') {
-                message = '## Claude Code: CodeRabbit review clean\n\nNo inline comments found in this review. No action needed.';
-              } else if (skipReason === 'only_minor') {
-                message = `## Claude Code: only minor issues remain\n\nCodeRabbit's latest review has ${minor} comment(s), all minor severity (🟡). These are acceptable for merge — no auto-fix needed.\n\nA human can address these in a follow-up if desired.`;
+                message = '## Claude Code: CodeRabbit review clean ✅\n\nNo inline comments found in this review. All issues resolved!';
               }
 
               if (message) {
@@ -134,7 +129,7 @@ jobs:
             A CodeRabbit review was just submitted on this PR.
             It has ${{ steps.analyze.outputs.critical }} critical, ${{ steps.analyze.outputs.major }} major, and ${{ steps.analyze.outputs.minor }} minor issues.
 
-            Your job: fix all critical and major issues. Minor issues are optional but fix them if straightforward.
+            Your job: fix EVERY issue CodeRabbit raised — critical, major, minor, and nitpicks. All of them.
 
             ## IMPORTANT: Batch all fixes, single push
 
@@ -156,7 +151,7 @@ jobs:
 
             3. Read and understand ALL comments before making any changes.
 
-            4. Fix every critical (🔴) and major (🟠) issue. Also fix minor (🟡) issues if the fix is straightforward.
+            4. Fix EVERY issue regardless of severity — critical (🔴), major (🟠), minor (🟡), and nitpicks.
                Work through all fixes WITHOUT committing or pushing between them.
 
             5. After ALL fixes are applied, stage everything and create a SINGLE commit:
