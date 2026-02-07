@@ -50,46 +50,50 @@ export function useCalendarData(month: Date) {
     setLoading(true);
 
     async function fetchData() {
-      const [missionsRes, eventsRes] = await Promise.all([
-        supabase
-          .from("missions")
-          .select("*")
-          .not("due_at", "is", null)
-          .gte("due_at", rangeStartISO)
-          .lte("due_at", rangeEndISO)
-          .order("due_at", { ascending: true }),
-        supabase
-          .from("events")
-          .select("occurred_at")
-          .gte("occurred_at", rangeStartISO)
-          .lte("occurred_at", rangeEndISO)
-          .limit(5000),
-      ]);
+      try {
+        const [missionsRes, eventsRes] = await Promise.all([
+          supabase
+            .from("missions")
+            .select("*")
+            .not("due_at", "is", null)
+            .gte("due_at", rangeStartISO)
+            .lte("due_at", rangeEndISO)
+            .order("due_at", { ascending: true }),
+          supabase
+            .from("events")
+            .select("occurred_at")
+            .gte("occurred_at", rangeStartISO)
+            .lte("occurred_at", rangeEndISO)
+            .limit(5000),
+        ]);
 
-      if (cancelled) return;
+        if (cancelled) return;
 
-      if (missionsRes.error) {
-        console.error("Failed to fetch missions:", missionsRes.error.message);
-      }
-      if (eventsRes.error) {
-        console.error("Failed to fetch events:", eventsRes.error.message);
-      }
-
-      if (missionsRes.data) {
-        setMissions(missionsRes.data as MissionRow[]);
-      }
-
-      // Count events per day
-      if (eventsRes.data) {
-        const counts: Record<string, number> = {};
-        for (const e of eventsRes.data) {
-          const dayKey = (e.occurred_at as string).slice(0, 10);
-          counts[dayKey] = (counts[dayKey] || 0) + 1;
+        if (missionsRes.error) {
+          console.error("Failed to fetch missions:", missionsRes.error.message);
         }
-        setEventCountsByDay(counts);
-      }
+        if (eventsRes.error) {
+          console.error("Failed to fetch events:", eventsRes.error.message);
+        }
 
-      setLoading(false);
+        if (missionsRes.data) {
+          setMissions(missionsRes.data as MissionRow[]);
+        }
+
+        // Count events per day
+        if (eventsRes.data) {
+          const counts: Record<string, number> = {};
+          for (const e of eventsRes.data) {
+            const dayKey = (e.occurred_at as string).slice(0, 10);
+            counts[dayKey] = (counts[dayKey] || 0) + 1;
+          }
+          setEventCountsByDay(counts);
+        }
+      } catch (err) {
+        console.error("Calendar data fetch failed:", err);
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
     }
 
     fetchData();
@@ -120,13 +124,17 @@ export function useCalendarData(month: Date) {
       const dayEnd = new Date(date);
       dayEnd.setHours(23, 59, 59, 999);
 
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from("events")
         .select("*")
         .gte("occurred_at", dayStart.toISOString())
         .lte("occurred_at", dayEnd.toISOString())
         .order("occurred_at", { ascending: false })
         .limit(50);
+
+      if (error) {
+        console.error("Failed to fetch events for day:", error.message);
+      }
 
       return (data as EventRow[]) ?? [];
     },
@@ -168,7 +176,8 @@ export function useCalendarData(month: Date) {
     }
 
     return { overdue, dueThisWeek, completedThisMonth };
-  }, [missions, month]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [missions, month.getTime()]);
 
   // Get missions for a specific day
   const getMissionsForDay = useCallback(

@@ -55,14 +55,20 @@ export async function POST(
 
   const avatarUrl = urlData.publicUrl;
 
-  // Update agent record
-  const { error: updateError } = await supabase
+  // Update agent record (select to verify agent exists)
+  const { data: updated, error: updateError } = await supabase
     .from("agents")
     .update({ avatar_url: avatarUrl })
-    .eq("id", agentId);
+    .eq("id", agentId)
+    .select("id")
+    .maybeSingle();
 
   if (updateError) {
     return NextResponse.json({ error: updateError.message }, { status: 500 });
+  }
+
+  if (!updated) {
+    return NextResponse.json({ error: "Agent not found" }, { status: 404 });
   }
 
   return NextResponse.json({ avatar_url: avatarUrl });

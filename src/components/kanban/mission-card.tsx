@@ -52,7 +52,7 @@ export function MissionCard({
       style={style}
       {...attributes}
       {...listeners}
-      onClick={onClick}
+      onClick={() => { if (!isDragging) onClick(); }}
       className="rounded-lg border border-zinc-800 bg-zinc-900/80 p-3 cursor-grab active:cursor-grabbing hover:border-zinc-700 transition-colors"
     >
       <div className="text-[13px] text-zinc-200 leading-snug mb-2">

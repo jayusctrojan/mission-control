@@ -85,7 +85,10 @@ export async function POST(req: NextRequest) {
 
     const { error: costError } = await supabase.from("cost_events").insert(costRows);
     if (costError) {
-      return NextResponse.json({ error: costError.message }, { status: 500 });
+      return NextResponse.json(
+        { error: costError.message, inserted: insertedRegular },
+        { status: insertedRegular > 0 ? 207 : 500 }
+      );
     }
 
     // Also insert into events table for the activity feed

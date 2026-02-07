@@ -37,8 +37,11 @@ export function KanbanBoard() {
   const [createOpen, setCreateOpen] = useState(false);
   const [createStatus, setCreateStatus] = useState<MissionStatus>("backlog");
 
-  // Deep-link: auto-open mission detail from ?detail=<id>
+  // Deep-link: auto-open mission detail from ?detail=<id> (only on initial load)
+  const [deepLinkHandled, setDeepLinkHandled] = useState(false);
+
   useEffect(() => {
+    if (deepLinkHandled) return;
     const detailId = searchParams.get("detail");
     if (detailId && missions.length > 0) {
       const mission = missions.find((m) => m.id === detailId);
@@ -46,8 +49,9 @@ export function KanbanBoard() {
         setDetailMission(mission);
         setDetailOpen(true);
       }
+      setDeepLinkHandled(true);
     }
-  }, [searchParams, missions]);
+  }, [searchParams, missions, deepLinkHandled]);
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 8 } })

@@ -45,8 +45,8 @@ function parseTaskQueue(content: string, filePath: string): ParsedMission[] {
     if (taskMatch) {
       const completed = taskMatch[1] !== " ";
       const title = taskMatch[2].trim();
-      // Use stable identifier based on file + status + title (not line number)
-      const markdownRef = `${filePath}:${currentStatus}:${title}`;
+      // Use stable identifier based on file + title only (not status, which changes when tasks move)
+      const markdownRef = `${filePath}:${title}`;
 
       missions.push({
         title,
@@ -81,7 +81,7 @@ async function syncMissions(filePath: string): Promise<void> {
       .from("missions")
       .select("id")
       .eq("markdown_ref", mission.markdown_ref)
-      .single();
+      .maybeSingle();
 
     if (existing) {
       const { error: updateErr } = await supabase
