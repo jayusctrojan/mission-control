@@ -4,13 +4,12 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "start": "tsx src/index.ts",
-    "dev": "tsx watch src/index.ts"
+    "start": "doppler run -- tsx src/index.ts",
+    "dev": "doppler run -- tsx watch src/index.ts"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.49.4",
-    "chokidar": "^4.0.3",
-    "dotenv": "^16.4.7"
+    "chokidar": "^4.0.3"
   },
   "devDependencies": {
     "tsx": "^4.19.2",

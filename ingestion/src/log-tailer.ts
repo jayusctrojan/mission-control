@@ -49,12 +49,35 @@ async function readNewLines(
   }
 }
 
+// Cache valid agent IDs to avoid FK violations
+let validAgentIds: Set<string> | null = null;
+
+async function getValidAgentIds(): Promise<Set<string>> {
+  if (validAgentIds) return validAgentIds;
+  const { data } = await supabase.from("agents").select("id");
+  validAgentIds = new Set((data ?? []).map((r: { id: string }) => r.id));
+  return validAgentIds;
+}
+
+// Call this after agent sync to refresh the cache
+export function invalidateAgentCache(): void {
+  validAgentIds = null;
+}
+
 async function insertEvents(events: ParsedEvent[]): Promise<void> {
   if (events.length === 0) return;
 
+  const agentIds = await getValidAgentIds();
+
+  // Null out agent_ids that don't exist in the agents table
+  const cleaned = events.map((e) => ({
+    ...e,
+    agent_id: e.agent_id && agentIds.has(e.agent_id) ? e.agent_id : null,
+  }));
+
   // Batch insert, max 100 at a time
-  for (let i = 0; i < events.length; i += 100) {
-    const batch = events.slice(i, i + 100);
+  for (let i = 0; i < cleaned.length; i += 100) {
+    const batch = cleaned.slice(i, i + 100);
     const { error } = await supabase.from("events").insert(batch);
     if (error) {
       console.error(`[insert] Error inserting events batch: ${error.message}`);

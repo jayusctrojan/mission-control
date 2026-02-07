@@ -11,6 +11,9 @@ import {
   Zap,
   XCircle,
   Monitor,
+  Target,
+  PenLine,
+  Send,
   type LucideIcon,
 } from "lucide-react";
 import type { EventType, EventSeverity } from "@/lib/database.types";
@@ -29,6 +32,9 @@ const TYPE_ICONS: Record<EventType, LucideIcon> = {
   session_end: Square,
   error: XCircle,
   system: Monitor,
+  mission_created: Target,
+  mission_updated: PenLine,
+  agent_push: Send,
 };
 
 const SEVERITY_COLORS: Record<EventSeverity, string> = {

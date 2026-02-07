@@ -1,0 +1,152 @@
+{
+  "name": "mission-control",
+  "description": "Interact with the Mission Control dashboard — create/update missions, add comments, push events.",
+  "tools": [
+    {
+      "name": "mc_list_missions",
+      "description": "List missions, optionally filtered by status or assigned agent.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": ["backlog", "in_progress", "review", "done"],
+            "description": "Filter by mission status"
+          },
+          "agent": {
+            "type": "string",
+            "description": "Filter by assigned agent ID"
+          }
+        }
+      },
+      "endpoint": {
+        "method": "GET",
+        "url": "{MISSION_CONTROL_URL}/api/missions",
+        "query": {
+          "status": "{status}",
+          "agent": "{agent}"
+        },
+        "headers": {
+          "Authorization": "Bearer {INGEST_API_KEY}"
+        }
+      }
+    },
+    {
+      "name": "mc_create_mission",
+      "description": "Create a new mission on the kanban board.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "title": { "type": "string", "description": "Mission title" },
+          "description": { "type": "string", "description": "Mission description" },
+          "priority": { "type": "string", "enum": ["low", "medium", "high", "critical"] },
+          "status": { "type": "string", "enum": ["backlog", "in_progress", "review", "done"] },
+          "assigned_agent_id": { "type": "string", "description": "Agent ID to assign" }
+        },
+        "required": ["title"]
+      },
+      "endpoint": {
+        "method": "POST",
+        "url": "{MISSION_CONTROL_URL}/api/missions",
+        "headers": {
+          "Authorization": "Bearer {INGEST_API_KEY}",
+          "Content-Type": "application/json"
+        },
+        "body": {
+          "title": "{title}",
+          "description": "{description}",
+          "priority": "{priority}",
+          "status": "{status}",
+          "assigned_agent_id": "{assigned_agent_id}",
+          "source": "openclaw"
+        }
+      }
+    },
+    {
+      "name": "mc_update_mission",
+      "description": "Update an existing mission's fields (title, description, status, priority, assigned agent).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string", "description": "Mission UUID" },
+          "title": { "type": "string" },
+          "description": { "type": "string" },
+          "status": { "type": "string", "enum": ["backlog", "in_progress", "review", "done"] },
+          "priority": { "type": "string", "enum": ["low", "medium", "high", "critical"] },
+          "assigned_agent_id": { "type": "string" }
+        },
+        "required": ["id"]
+      },
+      "endpoint": {
+        "method": "PATCH",
+        "url": "{MISSION_CONTROL_URL}/api/missions/{id}",
+        "headers": {
+          "Authorization": "Bearer {INGEST_API_KEY}",
+          "Content-Type": "application/json"
+        },
+        "body": {
+          "title": "{title}",
+          "description": "{description}",
+          "status": "{status}",
+          "priority": "{priority}",
+          "assigned_agent_id": "{assigned_agent_id}"
+        }
+      }
+    },
+    {
+      "name": "mc_comment",
+      "description": "Add a comment to a mission.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "mission_id": { "type": "string", "description": "Mission UUID" },
+          "body": { "type": "string", "description": "Comment text" },
+          "agent_id": { "type": "string", "description": "Agent ID posting the comment" }
+        },
+        "required": ["mission_id", "body"]
+      },
+      "endpoint": {
+        "method": "POST",
+        "url": "{MISSION_CONTROL_URL}/api/missions/{mission_id}/comments",
+        "headers": {
+          "Authorization": "Bearer {INGEST_API_KEY}",
+          "Content-Type": "application/json"
+        },
+        "body": {
+          "body": "{body}",
+          "agent_id": "{agent_id}"
+        }
+      }
+    },
+    {
+      "name": "mc_push_event",
+      "description": "Push one or more events to the Mission Control activity feed.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "event_type": { "type": "string", "description": "Event type (e.g. agent_push, mission_created)" },
+          "title": { "type": "string", "description": "Event title" },
+          "agent_id": { "type": "string" },
+          "detail": { "type": "string" },
+          "severity": { "type": "string", "enum": ["info", "warn", "error", "critical"] }
+        },
+        "required": ["event_type", "title"]
+      },
+      "endpoint": {
+        "method": "POST",
+        "url": "{MISSION_CONTROL_URL}/api/ingest",
+        "headers": {
+          "Authorization": "Bearer {INGEST_API_KEY}",
+          "Content-Type": "application/json"
+        },
+        "body": {
+          "event_type": "{event_type}",
+          "title": "{title}",
+          "agent_id": "{agent_id}",
+          "detail": "{detail}",
+          "severity": "{severity}"
+        }
+      }
+    }
+  ]
+}
