@@ -38,7 +38,8 @@ function describeCron(expr: string): string {
                    dom === "3" || dom === "23" ? "rd" : "th";
     return `${dom}${suffix} of month at ${hour.padStart(2, "0")}:${min.padStart(2, "0")}`;
   }
-  // Daily
+  // Daily — guard against wildcards/steps in hour or min
+  if (!/^\d+$/.test(hour) || !/^\d+$/.test(min)) return expr;
   return `daily at ${hour.padStart(2, "0")}:${min.padStart(2, "0")}`;
 }
 
@@ -71,18 +72,23 @@ export function useScheduledTasks() {
     let cancelled = false;
 
     async function fetchTasks() {
-      const { data, error } = await supabase
-        .from("scheduled_tasks")
-        .select("*")
-        .eq("enabled", true)
-        .order("name");
+      try {
+        const { data, error } = await supabase
+          .from("scheduled_tasks")
+          .select("*")
+          .eq("enabled", true)
+          .order("name");
 
-      if (cancelled) return;
-      if (error) {
-        console.error("Failed to fetch scheduled tasks:", error.message);
+        if (cancelled) return;
+        if (error) {
+          console.error("Failed to fetch scheduled tasks:", error.message);
+        }
+        setTasks((data as ScheduledTaskRow[]) ?? []);
+      } catch (err) {
+        console.error("Failed to fetch scheduled tasks:", err);
+      } finally {
+        if (!cancelled) setLoading(false);
       }
-      setTasks((data as ScheduledTaskRow[]) ?? []);
-      setLoading(false);
     }
 
     fetchTasks();
