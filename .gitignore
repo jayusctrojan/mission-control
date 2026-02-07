@@ -24,6 +24,9 @@
 .DS_Store
 *.pem
 
+# MCP config (contains API keys)
+.mcp.json
+
 # debug
 npm-debug.log*
 yarn-debug.log*
@@ -32,6 +35,12 @@ yarn-error.log*
 
 # env files (can opt-in for committing if needed)
 .env*
+!.env.local.example
+!.env.example
+
+# ingestion
+/ingestion/node_modules
+/ingestion/dist
 
 # vercel
 .vercel

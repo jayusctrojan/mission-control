@@ -1,0 +1,21 @@
+services:
+  - type: web
+    name: mission-control
+    runtime: node
+    plan: starter
+    region: oregon
+    buildCommand: npm install && npm run build:render
+    startCommand: npm run start:render
+    envVars:
+      - key: NEXT_PUBLIC_SUPABASE_URL
+        sync: false
+      - key: NEXT_PUBLIC_SUPABASE_ANON_KEY
+        sync: false
+      - key: SUPABASE_SERVICE_ROLE_KEY
+        sync: false
+      - key: SUPABASE_URL
+        sync: false
+      - key: INGEST_API_KEY
+        sync: false
+      - key: NODE_ENV
+        value: production

@@ -1,0 +1,18 @@
+{
+  "name": "mission-control-ingestion",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "start": "doppler run -- tsx src/index.ts",
+    "dev": "doppler run -- tsx watch src/index.ts"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.49.4",
+    "chokidar": "^4.0.3"
+  },
+  "devDependencies": {
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.3"
+  }
+}
