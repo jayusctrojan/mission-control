@@ -79,17 +79,22 @@ async function syncMissions(filePath: string): Promise<void> {
   for (const mission of parsed) {
     const { data: existing } = await supabase
       .from("missions")
-      .select("id")
+      .select("id, completed_at")
       .eq("markdown_ref", mission.markdown_ref)
       .maybeSingle();
 
     if (existing) {
+      // Preserve existing completed_at if task was already done; only set on new completion
+      const completedAt = mission.completed
+        ? (existing.completed_at ?? new Date().toISOString())
+        : null;
+
       const { error: updateErr } = await supabase
         .from("missions")
         .update({
           title: mission.title,
           status: mission.status,
-          completed_at: mission.completed ? new Date().toISOString() : null,
+          completed_at: completedAt,
         })
         .eq("id", existing.id);
       if (updateErr) {

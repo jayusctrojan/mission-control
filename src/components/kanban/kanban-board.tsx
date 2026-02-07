@@ -71,11 +71,6 @@ export function KanbanBoard() {
     ? missions.find((m) => m.id === activeId)
     : null;
 
-  function findColumnForMission(id: string): MissionStatus | null {
-    const mission = missions.find((m) => m.id === id);
-    return mission ? (mission.status as MissionStatus) : null;
-  }
-
   const handleDragStart = useCallback((event: DragStartEvent) => {
     setActiveId(event.active.id as string);
   }, []);
@@ -85,25 +80,25 @@ export function KanbanBoard() {
       const { active, over } = event;
       if (!over) return;
 
-      const activeCol = findColumnForMission(active.id as string);
-      // over.id could be a column id (status) or a mission id
-      let overCol: MissionStatus | null = STATUSES.includes(
-        over.id as MissionStatus
-      )
-        ? (over.id as MissionStatus)
-        : findColumnForMission(over.id as string);
+      setMissions((prev) => {
+        const findCol = (id: string): MissionStatus | null => {
+          const m = prev.find((m) => m.id === id);
+          return m ? (m.status as MissionStatus) : null;
+        };
 
-      if (!activeCol || !overCol || activeCol === overCol) return;
+        const activeCol = findCol(active.id as string);
+        const overCol: MissionStatus | null = STATUSES.includes(over.id as MissionStatus)
+          ? (over.id as MissionStatus)
+          : findCol(over.id as string);
 
-      // Move mission to new column optimistically
-      setMissions((prev) =>
-        prev.map((m) =>
+        if (!activeCol || !overCol || activeCol === overCol) return prev;
+
+        return prev.map((m) =>
           m.id === active.id ? { ...m, status: overCol as MissionStatus } : m
-        )
-      );
+        );
+      });
     },
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [missions]
+    [setMissions]
   );
 
   const handleDragEnd = useCallback(
@@ -113,70 +108,68 @@ export function KanbanBoard() {
 
       if (!over) return;
 
-      const mission = missions.find((m) => m.id === active.id);
-      if (!mission) return;
+      // Use functional setMissions to read fresh state and compute sort order atomically
+      let persistStatus: MissionStatus | null = null;
+      let persistSortOrder = 0;
 
-      const newStatus: MissionStatus = STATUSES.includes(
-        over.id as MissionStatus
-      )
-        ? (over.id as MissionStatus)
-        : (missions.find((m) => m.id === over.id)?.status as MissionStatus) ??
-          (mission.status as MissionStatus);
+      setMissions((prev) => {
+        const mission = prev.find((m) => m.id === active.id);
+        if (!mission) return prev;
 
-      // Handle reordering within column
-      const columnMissions = missions
-        .filter((m) => m.status === newStatus)
-        .sort((a, b) => a.sort_order - b.sort_order);
+        const newStatus: MissionStatus = STATUSES.includes(over.id as MissionStatus)
+          ? (over.id as MissionStatus)
+          : (prev.find((m) => m.id === over.id)?.status as MissionStatus) ??
+            (mission.status as MissionStatus);
 
-      if (over.id !== active.id && !STATUSES.includes(over.id as MissionStatus)) {
-        const oldIndex = columnMissions.findIndex(
-          (m) => m.id === active.id
-        );
-        const newIndex = columnMissions.findIndex(
-          (m) => m.id === over.id
-        );
-        if (oldIndex !== -1 && newIndex !== -1) {
-          const reordered = arrayMove(columnMissions, oldIndex, newIndex);
-          setMissions((prev) => {
+        persistStatus = newStatus;
+
+        // Handle reordering within column
+        const columnMissions = prev
+          .filter((m) => m.status === newStatus)
+          .sort((a, b) => a.sort_order - b.sort_order);
+
+        let nextState = prev;
+
+        if (over.id !== active.id && !STATUSES.includes(over.id as MissionStatus)) {
+          const oldIndex = columnMissions.findIndex((m) => m.id === active.id);
+          const newIndex = columnMissions.findIndex((m) => m.id === over.id);
+          if (oldIndex !== -1 && newIndex !== -1) {
+            const reordered = arrayMove(columnMissions, oldIndex, newIndex);
             const other = prev.filter((m) => m.status !== newStatus);
-            return [
+            nextState = [
               ...other,
               ...reordered.map((m, i) => ({ ...m, sort_order: i })),
             ];
-          });
+          }
         }
-      }
 
-      // Compute sort_order for persistence
-      const targetColumn = missions
-        .filter(
-          (m) => m.status === newStatus && m.id !== active.id
-        )
-        .sort((a, b) => a.sort_order - b.sort_order);
+        // Compute sort_order for persistence from current state
+        const targetColumn = nextState
+          .filter((m) => m.status === newStatus && m.id !== active.id)
+          .sort((a, b) => a.sort_order - b.sort_order);
 
-      let sortOrder: number;
-      if (STATUSES.includes(over.id as MissionStatus)) {
-        // Dropped on column — append at end
-        sortOrder =
-          targetColumn.length > 0
+        if (STATUSES.includes(over.id as MissionStatus)) {
+          persistSortOrder = targetColumn.length > 0
             ? targetColumn[targetColumn.length - 1].sort_order + 1
             : 0;
-      } else {
-        const overIndex = targetColumn.findIndex(
-          (m) => m.id === over.id
-        );
-        sortOrder = overIndex >= 0 ? overIndex : targetColumn.length;
-      }
+        } else {
+          const overIndex = targetColumn.findIndex((m) => m.id === over.id);
+          persistSortOrder = overIndex >= 0 ? overIndex : targetColumn.length;
+        }
 
-      // Persist
-      try {
-        await updateMissionStatus(active.id as string, newStatus, sortOrder);
-      } catch (err) {
-        console.error("Failed to update mission status:", err);
+        return nextState;
+      });
+
+      // Persist (uses values captured from the functional update above)
+      if (persistStatus) {
+        try {
+          await updateMissionStatus(active.id as string, persistStatus, persistSortOrder);
+        } catch (err) {
+          console.error("Failed to update mission status:", err);
+        }
       }
     },
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [missions]
+    [setMissions]
   );
 
   function handleAddToColumn(status: MissionStatus) {

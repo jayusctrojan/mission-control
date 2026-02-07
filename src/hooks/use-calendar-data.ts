@@ -80,11 +80,12 @@ export function useCalendarData(month: Date) {
           setMissions(missionsRes.data as MissionRow[]);
         }
 
-        // Count events per day
+        // Count events per day (convert to local date to avoid UTC off-by-one near midnight)
         if (eventsRes.data) {
           const counts: Record<string, number> = {};
           for (const e of eventsRes.data) {
-            const dayKey = (e.occurred_at as string).slice(0, 10);
+            const localDate = new Date(e.occurred_at as string);
+            const dayKey = `${localDate.getFullYear()}-${String(localDate.getMonth() + 1).padStart(2, "0")}-${String(localDate.getDate()).padStart(2, "0")}`;
             counts[dayKey] = (counts[dayKey] || 0) + 1;
           }
           setEventCountsByDay(counts);
