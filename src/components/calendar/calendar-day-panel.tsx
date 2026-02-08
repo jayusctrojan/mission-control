@@ -1,12 +1,16 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { format, formatDistanceToNow } from "date-fns";
-import { Target, Activity } from "lucide-react";
+import { format } from "date-fns";
+import { Target, Activity, Clock } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
+import { AgentAvatar } from "@/components/agent-avatar";
+import { getAgent } from "@/lib/agents";
+import type { AgentData } from "@/hooks/use-agent-statuses";
 import type { Database, MissionPriority } from "@/lib/database.types";
+import type { ScheduledTaskOccurrence } from "@/hooks/use-scheduled-tasks";
 
 type MissionRow = Database["public"]["Tables"]["missions"]["Row"];
 type EventRow = Database["public"]["Tables"]["events"]["Row"];
@@ -21,15 +25,19 @@ const PRIORITY_COLORS: Record<MissionPriority, string> = {
 interface CalendarDayPanelProps {
   date: Date;
   missions: MissionRow[];
+  scheduledTasks: ScheduledTaskOccurrence[];
   fetchEventsForDay: (date: Date) => Promise<EventRow[]>;
   onMissionClick: (mission: MissionRow) => void;
+  agentData: Record<string, AgentData>;
 }
 
 export function CalendarDayPanel({
   date,
   missions,
+  scheduledTasks,
   fetchEventsForDay,
   onMissionClick,
+  agentData,
 }: CalendarDayPanelProps) {
   const [events, setEvents] = useState<EventRow[]>([]);
   const [loadingEvents, setLoadingEvents] = useState(true);
@@ -53,6 +61,58 @@ export function CalendarDayPanel({
       <h4 className="text-sm font-medium text-zinc-200 mb-3">
         {format(date, "EEEE, MMMM d, yyyy")}
       </h4>
+
+      {/* Scheduled tasks */}
+      {scheduledTasks.length > 0 && (
+        <div className="mb-3">
+          <div className="flex items-center gap-2 mb-2">
+            <Clock className="h-3.5 w-3.5 text-violet-400" />
+            <span className="text-xs font-medium text-violet-400 uppercase tracking-wider">
+              Scheduled Tasks ({scheduledTasks.length})
+            </span>
+          </div>
+          <div className="space-y-1">
+            {scheduledTasks.map((occ, i) => (
+              <div
+                key={`${occ.task.id}-${i}`}
+                className="flex items-center gap-2 rounded-md px-3 py-1.5 text-[12px]"
+              >
+                <span className="text-violet-400 shrink-0 w-10 font-mono">
+                  {occ.runCount > 1 ? "" : occ.time}
+                </span>
+                <span className="text-zinc-200 truncate flex-1">
+                  {occ.task.name}
+                  {occ.runCount > 1 && (
+                    <span className="text-violet-400/70 ml-1">
+                      — {occ.runCount} runs ({occ.cronDescription})
+                    </span>
+                  )}
+                </span>
+                {occ.task.agent_id && (() => {
+                  const agent = getAgent(occ.task.agent_id);
+                  if (!agent) return null;
+                  const ad = agentData[occ.task.agent_id];
+                  return (
+                    <AgentAvatar
+                      agent={agent}
+                      status={ad?.status ?? "offline"}
+                      avatarUrl={ad?.avatarUrl ?? null}
+                      size="sm"
+                    />
+                  );
+                })()}
+                {occ.runCount <= 1 && (
+                  <span className="text-[10px] text-zinc-600 shrink-0">
+                    {occ.cronDescription}
+                  </span>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {scheduledTasks.length > 0 && <Separator className="bg-zinc-800 my-3" />}
 
       {/* Missions due this day */}
       <div className="mb-3">
