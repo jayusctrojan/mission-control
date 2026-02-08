@@ -10,6 +10,7 @@ import {
   isSameDay,
 } from "date-fns";
 import { useCalendarData } from "@/hooks/use-calendar-data";
+import { useAgentStatuses } from "@/hooks/use-agent-statuses";
 import { CalendarHeader } from "./calendar-header";
 import { CalendarDayCell } from "./calendar-day-cell";
 import { CalendarDayPanel } from "./calendar-day-panel";
@@ -38,6 +39,7 @@ export function CalendarView() {
     rangeStart,
     rangeEnd,
   } = useCalendarData(month);
+  const agentData = useAgentStatuses();
 
   const days = eachDayOfInterval({ start: rangeStart, end: rangeEnd });
 
@@ -129,6 +131,7 @@ export function CalendarView() {
           scheduledTasks={getTasksForDay(selectedDate)}
           fetchEventsForDay={fetchEventsForDay}
           onMissionClick={handleMissionClick}
+          agentData={agentData}
         />
       )}
 

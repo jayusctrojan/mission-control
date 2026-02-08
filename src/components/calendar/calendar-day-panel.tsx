@@ -6,6 +6,9 @@ import { Target, Activity, Clock } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
+import { AgentAvatar } from "@/components/agent-avatar";
+import { getAgent } from "@/lib/agents";
+import type { AgentData } from "@/hooks/use-agent-statuses";
 import type { Database, MissionPriority } from "@/lib/database.types";
 import type { ScheduledTaskOccurrence } from "@/hooks/use-scheduled-tasks";
 
@@ -25,6 +28,7 @@ interface CalendarDayPanelProps {
   scheduledTasks: ScheduledTaskOccurrence[];
   fetchEventsForDay: (date: Date) => Promise<EventRow[]>;
   onMissionClick: (mission: MissionRow) => void;
+  agentData: Record<string, AgentData>;
 }
 
 export function CalendarDayPanel({
@@ -33,6 +37,7 @@ export function CalendarDayPanel({
   scheduledTasks,
   fetchEventsForDay,
   onMissionClick,
+  agentData,
 }: CalendarDayPanelProps) {
   const [events, setEvents] = useState<EventRow[]>([]);
   const [loadingEvents, setLoadingEvents] = useState(true);
@@ -83,14 +88,19 @@ export function CalendarDayPanel({
                     </span>
                   )}
                 </span>
-                {occ.task.agent_id && (
-                  <Badge
-                    variant="outline"
-                    className="text-[9px] border-violet-600/40 text-violet-400 shrink-0"
-                  >
-                    {occ.task.agent_id}
-                  </Badge>
-                )}
+                {occ.task.agent_id && (() => {
+                  const agent = getAgent(occ.task.agent_id);
+                  if (!agent) return null;
+                  const ad = agentData[occ.task.agent_id];
+                  return (
+                    <AgentAvatar
+                      agent={agent}
+                      status={ad?.status ?? "offline"}
+                      avatarUrl={ad?.avatarUrl ?? null}
+                      size="sm"
+                    />
+                  );
+                })()}
                 {occ.runCount <= 1 && (
                   <span className="text-[10px] text-zinc-600 shrink-0">
                     {occ.cronDescription}
