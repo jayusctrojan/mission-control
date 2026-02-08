@@ -125,24 +125,29 @@ export function useCalendarData(month: Date) {
   // On-demand fetch events for a specific day
   const fetchEventsForDay = useCallback(
     async (date: Date): Promise<EventRow[]> => {
-      const dayStart = new Date(date);
-      dayStart.setHours(0, 0, 0, 0);
-      const dayEnd = new Date(date);
-      dayEnd.setHours(23, 59, 59, 999);
+      try {
+        const dayStart = new Date(date);
+        dayStart.setHours(0, 0, 0, 0);
+        const dayEnd = new Date(date);
+        dayEnd.setHours(23, 59, 59, 999);
 
-      const { data, error } = await supabase
-        .from("events")
-        .select("*")
-        .gte("occurred_at", dayStart.toISOString())
-        .lte("occurred_at", dayEnd.toISOString())
-        .order("occurred_at", { ascending: false })
-        .limit(50);
+        const { data, error } = await supabase
+          .from("events")
+          .select("*")
+          .gte("occurred_at", dayStart.toISOString())
+          .lte("occurred_at", dayEnd.toISOString())
+          .order("occurred_at", { ascending: false })
+          .limit(50);
 
-      if (error) {
-        console.error("Failed to fetch events for day:", error.message);
+        if (error) {
+          console.error("Failed to fetch events for day:", error.message);
+        }
+
+        return (data as EventRow[]) ?? [];
+      } catch (err) {
+        console.error("Failed to fetch events for day:", err);
+        return [];
       }
-
-      return (data as EventRow[]) ?? [];
     },
     []
   );
