@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useMemo } from "react";
 import {
   addMonths,
   subMonths,
@@ -67,6 +67,20 @@ export function CalendarView() {
     setDetailOpen(true);
   }
 
+  // Memoize selected day data to avoid new arrays every render
+  const selectedDayMissions = useMemo(
+    () => (selectedDate ? getMissionsForDay(selectedDate) : []),
+    [selectedDate, getMissionsForDay]
+  );
+  const selectedDayTasks = useMemo(
+    () => (selectedDate ? getTasksForDay(selectedDate) : []),
+    [selectedDate, getTasksForDay]
+  );
+  const selectedDayEvents = useMemo(
+    () => (selectedDate ? getEventsForDay(selectedDate) : []),
+    [selectedDate, getEventsForDay]
+  );
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64 text-zinc-500">
@@ -129,9 +143,9 @@ export function CalendarView() {
         {selectedDate ? (
           <CalendarDayPanel
             date={selectedDate}
-            missions={getMissionsForDay(selectedDate)}
-            scheduledTasks={getTasksForDay(selectedDate)}
-            events={getEventsForDay(selectedDate)}
+            missions={selectedDayMissions}
+            scheduledTasks={selectedDayTasks}
+            events={selectedDayEvents}
             onMissionClick={handleMissionClick}
             agentData={agentData}
           />
