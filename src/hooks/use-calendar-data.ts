@@ -28,8 +28,11 @@ export interface CalendarStats {
   tasksThisWeek: number;
 }
 
+type CalendarEvent = Pick<EventRow, "id" | "title" | "occurred_at" | "event_type">;
+
 export function useCalendarData(month: Date) {
   const [missions, setMissions] = useState<MissionRow[]>([]);
+  const [events, setEvents] = useState<CalendarEvent[]>([]);
   const [eventCountsByDay, setEventCountsByDay] = useState<
     Record<string, number>
   >({});
@@ -66,9 +69,10 @@ export function useCalendarData(month: Date) {
             .order("due_at", { ascending: true }),
           supabase
             .from("events")
-            .select("occurred_at")
+            .select("id, title, occurred_at, event_type")
             .gte("occurred_at", rangeStartISO)
             .lte("occurred_at", rangeEndISO)
+            .order("occurred_at", { ascending: false })
             .limit(5000),
         ]);
 
@@ -85,8 +89,9 @@ export function useCalendarData(month: Date) {
           setMissions(missionsRes.data as MissionRow[]);
         }
 
-        // Count events per day (convert to local date to avoid UTC off-by-one near midnight)
+        // Store events and compute counts per day
         if (eventsRes.data) {
+          setEvents(eventsRes.data as CalendarEvent[]);
           const counts: Record<string, number> = {};
           for (const e of eventsRes.data) {
             const localDate = new Date(e.occurred_at as string);
@@ -122,34 +127,14 @@ export function useCalendarData(month: Date) {
     };
   }, [rangeStartISO, rangeEndISO]);
 
-  // On-demand fetch events for a specific day
-  const fetchEventsForDay = useCallback(
-    async (date: Date): Promise<EventRow[]> => {
-      try {
-        const dayStart = new Date(date);
-        dayStart.setHours(0, 0, 0, 0);
-        const dayEnd = new Date(date);
-        dayEnd.setHours(23, 59, 59, 999);
-
-        const { data, error } = await supabase
-          .from("events")
-          .select("*")
-          .gte("occurred_at", dayStart.toISOString())
-          .lte("occurred_at", dayEnd.toISOString())
-          .order("occurred_at", { ascending: false })
-          .limit(50);
-
-        if (error) {
-          console.error("Failed to fetch events for day:", error.message);
-        }
-
-        return (data as EventRow[]) ?? [];
-      } catch (err) {
-        console.error("Failed to fetch events for day:", err);
-        return [];
-      }
+  // Get events for a specific day — instant local filter, no network request
+  const getEventsForDay = useCallback(
+    (date: Date): CalendarEvent[] => {
+      return events.filter(
+        (e) => e.occurred_at && isSameDay(new Date(e.occurred_at), date)
+      );
     },
-    []
+    [events]
   );
 
   // Compute stats
@@ -212,7 +197,7 @@ export function useCalendarData(month: Date) {
     missions,
     eventCountsByDay,
     loading: loading || tasksLoading,
-    fetchEventsForDay,
+    getEventsForDay,
     stats,
     getMissionsForDay,
     getTasksForDay,

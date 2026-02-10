@@ -29,6 +29,8 @@ export const AGENTS: AgentInfo[] = [
   { id: "harvey", name: "Harvey Specter", role: "Legal", model: "opus-4-5", color: "#a855f7", isHand: false, brainId: null, emoji: "Hv" },
   { id: "cox", name: "Dr. Cox", role: "Health", model: "opus-4-5", color: "#14b8a6", isHand: false, brainId: null, emoji: "C" },
   { id: "jared", name: "Jared Dunn", role: "PM / Projects", model: "opus-4-5", color: "#6366f1", isHand: false, brainId: null, emoji: "J" },
+  { id: "cko", name: "Naval", role: "Knowledge / CKO", model: "opus-4-6", color: "#0ea5e9", isHand: false, brainId: null, emoji: "N" },
+  { id: "cko-hand", name: "Naval Hand", role: "Knowledge (Hand)", model: "kimi-k2", color: "#0ea5e9", isHand: true, brainId: "cko", emoji: "n" },
 ];
 
 export const BRAIN_AGENTS = AGENTS.filter((a) => !a.isHand);
