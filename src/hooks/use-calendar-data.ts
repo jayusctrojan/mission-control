@@ -11,7 +11,6 @@ import {
   isWithinInterval,
   addDays,
   eachDayOfInterval,
-  isSameDay,
 } from "date-fns";
 import { supabase } from "@/lib/supabase";
 import { useScheduledTasks } from "./use-scheduled-tasks";
@@ -32,6 +31,11 @@ type CalendarEvent = Pick<EventRow, "id" | "title" | "occurred_at" | "event_type
 
 const EVENTS_PAGE_SIZE = 1000;
 
+/** Canonical day key for Map lookups — must be used for both indexing and retrieval. */
+function toDayKey(date: Date): string {
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+}
+
 export function useCalendarData(month: Date) {
   const [missions, setMissions] = useState<MissionRow[]>([]);
   const [eventCountsByDay, setEventCountsByDay] = useState<
@@ -39,6 +43,9 @@ export function useCalendarData(month: Date) {
   >({});
   const [eventsByDay, setEventsByDay] = useState<
     Map<string, CalendarEvent[]>
+  >(new Map());
+  const [missionsByDay, setMissionsByDay] = useState<
+    Map<string, MissionRow[]>
   >(new Map());
   const [loading, setLoading] = useState(true);
   const { getTasksForDay, getTaskCountForDay, loading: tasksLoading } = useScheduledTasks();
@@ -109,26 +116,38 @@ export function useCalendarData(month: Date) {
           console.error("Failed to fetch missions:", missionsRes.error.message);
         }
 
-        if (missionsRes.data) {
-          setMissions(missionsRes.data as MissionRow[]);
+        const missionData = (missionsRes.data ?? []) as MissionRow[];
+        setMissions(missionData);
+
+        // Pre-index missions by day for O(1) lookups
+        const missionIndex = new Map<string, MissionRow[]>();
+        for (const m of missionData) {
+          if (!m.due_at) continue;
+          const dayKey = toDayKey(new Date(m.due_at));
+          const existing = missionIndex.get(dayKey);
+          if (existing) {
+            existing.push(m);
+          } else {
+            missionIndex.set(dayKey, [m]);
+          }
         }
+        setMissionsByDay(missionIndex);
 
         // Pre-index events by day for O(1) lookups
         const counts: Record<string, number> = {};
-        const indexed = new Map<string, CalendarEvent[]>();
+        const eventIndex = new Map<string, CalendarEvent[]>();
         for (const e of allEvents) {
-          const localDate = new Date(e.occurred_at as string);
-          const dayKey = `${localDate.getFullYear()}-${String(localDate.getMonth() + 1).padStart(2, "0")}-${String(localDate.getDate()).padStart(2, "0")}`;
+          const dayKey = toDayKey(new Date(e.occurred_at as string));
           counts[dayKey] = (counts[dayKey] || 0) + 1;
-          const existing = indexed.get(dayKey);
+          const existing = eventIndex.get(dayKey);
           if (existing) {
             existing.push(e);
           } else {
-            indexed.set(dayKey, [e]);
+            eventIndex.set(dayKey, [e]);
           }
         }
         setEventCountsByDay(counts);
-        setEventsByDay(indexed);
+        setEventsByDay(eventIndex);
       } catch (err) {
         console.error("Calendar data fetch failed:", err);
       } finally {
@@ -161,10 +180,7 @@ export function useCalendarData(month: Date) {
 
   // Get events for a specific day — O(1) lookup from pre-indexed map
   const getEventsForDay = useCallback(
-    (date: Date): CalendarEvent[] => {
-      const dayKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
-      return eventsByDay.get(dayKey) || [];
-    },
+    (date: Date): CalendarEvent[] => eventsByDay.get(toDayKey(date)) || [],
     [eventsByDay]
   );
 
@@ -214,14 +230,10 @@ export function useCalendarData(month: Date) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [missions, month.getTime(), getTaskCountForDay]);
 
-  // Get missions for a specific day
+  // Get missions for a specific day — O(1) lookup from pre-indexed map
   const getMissionsForDay = useCallback(
-    (date: Date): MissionRow[] => {
-      return missions.filter(
-        (m) => m.due_at && isSameDay(new Date(m.due_at), date)
-      );
-    },
-    [missions]
+    (date: Date): MissionRow[] => missionsByDay.get(toDayKey(date)) || [],
+    [missionsByDay]
   );
 
   return {

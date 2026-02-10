@@ -36,14 +36,12 @@ export function CalendarDayCell({
   const today = isToday(date);
 
   return (
-    <div
-      role="button"
-      tabIndex={0}
+    <button
+      type="button"
       aria-pressed={isSelected}
       onClick={onClick}
-      onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onClick(); } }}
       className={cn(
-        "h-16 p-1.5 text-left border border-zinc-800/50 rounded-md transition-colors relative cursor-pointer select-none active:scale-95 active:bg-zinc-700/50",
+        "h-16 p-1.5 text-left border border-zinc-800/50 rounded-md transition-colors relative cursor-pointer select-none active:scale-95 active:bg-zinc-700/50 appearance-none bg-transparent",
         inCurrentMonth ? "bg-zinc-900/30" : "bg-zinc-950/50 opacity-40",
         today && "ring-1 ring-violet-500",
         isSelected && "border-violet-500 bg-violet-500/10",
@@ -97,6 +95,6 @@ export function CalendarDayCell({
           </span>
         </div>
       )}
-    </div>
+    </button>
   );
 }
