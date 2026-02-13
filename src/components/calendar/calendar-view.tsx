@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useMemo } from "react";
 import {
   addMonths,
   subMonths,
@@ -31,7 +31,7 @@ export function CalendarView() {
   const {
     eventCountsByDay,
     loading,
-    fetchEventsForDay,
+    getEventsForDay,
     stats,
     getMissionsForDay,
     getTasksForDay,
@@ -67,6 +67,20 @@ export function CalendarView() {
     setDetailOpen(true);
   }
 
+  // Memoize selected day data to avoid new arrays every render
+  const selectedDayMissions = useMemo(
+    () => (selectedDate ? getMissionsForDay(selectedDate) : []),
+    [selectedDate, getMissionsForDay]
+  );
+  const selectedDayTasks = useMemo(
+    () => (selectedDate ? getTasksForDay(selectedDate) : []),
+    [selectedDate, getTasksForDay]
+  );
+  const selectedDayEvents = useMemo(
+    () => (selectedDate ? getEventsForDay(selectedDate) : []),
+    [selectedDate, getEventsForDay]
+  );
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64 text-zinc-500">
@@ -77,7 +91,8 @@ export function CalendarView() {
 
   return (
     <div>
-      <div className="flex items-center justify-between mb-4">
+      {/* Header + Stats */}
+      <div className="flex items-center justify-between mb-3">
         <CalendarHeader
           month={month}
           onPrev={handlePrev}
@@ -123,17 +138,23 @@ export function CalendarView() {
         })}
       </div>
 
-      {/* Day panel */}
-      {selectedDate && (
-        <CalendarDayPanel
-          date={selectedDate}
-          missions={getMissionsForDay(selectedDate)}
-          scheduledTasks={getTasksForDay(selectedDate)}
-          fetchEventsForDay={fetchEventsForDay}
-          onMissionClick={handleMissionClick}
-          agentData={agentData}
-        />
-      )}
+      {/* Day panel — always rendered to prevent layout shift */}
+      <div className="mt-3">
+        {selectedDate ? (
+          <CalendarDayPanel
+            date={selectedDate}
+            missions={selectedDayMissions}
+            scheduledTasks={selectedDayTasks}
+            events={selectedDayEvents}
+            onMissionClick={handleMissionClick}
+            agentData={agentData}
+          />
+        ) : (
+          <div className="rounded-lg border border-zinc-800 bg-zinc-900/50 p-4 text-center">
+            <p className="text-sm text-zinc-600">Click a day to see its schedule</p>
+          </div>
+        )}
+      </div>
 
       {/* Reuse MissionDetail dialog from kanban */}
       <MissionDetail

@@ -11,7 +11,6 @@ import {
   isWithinInterval,
   addDays,
   eachDayOfInterval,
-  isSameDay,
 } from "date-fns";
 import { supabase } from "@/lib/supabase";
 import { useScheduledTasks } from "./use-scheduled-tasks";
@@ -28,11 +27,26 @@ export interface CalendarStats {
   tasksThisWeek: number;
 }
 
+type CalendarEvent = Pick<EventRow, "id" | "title" | "occurred_at" | "event_type">;
+
+const EVENTS_PAGE_SIZE = 1000;
+
+/** Canonical day key for Map lookups — must be used for both indexing and retrieval. */
+function toDayKey(date: Date): string {
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+}
+
 export function useCalendarData(month: Date) {
   const [missions, setMissions] = useState<MissionRow[]>([]);
   const [eventCountsByDay, setEventCountsByDay] = useState<
     Record<string, number>
   >({});
+  const [eventsByDay, setEventsByDay] = useState<
+    Map<string, CalendarEvent[]>
+  >(new Map());
+  const [missionsByDay, setMissionsByDay] = useState<
+    Map<string, MissionRow[]>
+  >(new Map());
   const [loading, setLoading] = useState(true);
   const { getTasksForDay, getTaskCountForDay, loading: tasksLoading } = useScheduledTasks();
 
@@ -54,9 +68,37 @@ export function useCalendarData(month: Date) {
     let cancelled = false;
     setLoading(true);
 
+    async function fetchAllEvents(): Promise<CalendarEvent[]> {
+      const allEvents: CalendarEvent[] = [];
+      let offset = 0;
+
+      while (!cancelled) {
+        const { data, error } = await supabase
+          .from("events")
+          .select("id, title, occurred_at, event_type")
+          .gte("occurred_at", rangeStartISO)
+          .lte("occurred_at", rangeEndISO)
+          .order("occurred_at", { ascending: false })
+          .range(offset, offset + EVENTS_PAGE_SIZE - 1);
+
+        if (error) {
+          throw new Error(`Failed to fetch events page at offset ${offset}: ${error.message}`);
+        }
+
+        if (!data || data.length === 0) break;
+        allEvents.push(...(data as CalendarEvent[]));
+
+        if (data.length < EVENTS_PAGE_SIZE) break;
+        offset += EVENTS_PAGE_SIZE;
+        console.warn(`Calendar events paginating — fetched ${allEvents.length} so far`);
+      }
+
+      return allEvents;
+    }
+
     async function fetchData() {
       try {
-        const [missionsRes, eventsRes] = await Promise.all([
+        const [missionsRes, allEvents] = await Promise.all([
           supabase
             .from("missions")
             .select("*")
@@ -64,12 +106,7 @@ export function useCalendarData(month: Date) {
             .gte("due_at", rangeStartISO)
             .lte("due_at", rangeEndISO)
             .order("due_at", { ascending: true }),
-          supabase
-            .from("events")
-            .select("occurred_at")
-            .gte("occurred_at", rangeStartISO)
-            .lte("occurred_at", rangeEndISO)
-            .limit(5000),
+          fetchAllEvents(),
         ]);
 
         if (cancelled) return;
@@ -77,24 +114,40 @@ export function useCalendarData(month: Date) {
         if (missionsRes.error) {
           console.error("Failed to fetch missions:", missionsRes.error.message);
         }
-        if (eventsRes.error) {
-          console.error("Failed to fetch events:", eventsRes.error.message);
-        }
 
-        if (missionsRes.data) {
-          setMissions(missionsRes.data as MissionRow[]);
-        }
+        const missionData = (missionsRes.data ?? []) as MissionRow[];
+        setMissions(missionData);
 
-        // Count events per day (convert to local date to avoid UTC off-by-one near midnight)
-        if (eventsRes.data) {
-          const counts: Record<string, number> = {};
-          for (const e of eventsRes.data) {
-            const localDate = new Date(e.occurred_at as string);
-            const dayKey = `${localDate.getFullYear()}-${String(localDate.getMonth() + 1).padStart(2, "0")}-${String(localDate.getDate()).padStart(2, "0")}`;
-            counts[dayKey] = (counts[dayKey] || 0) + 1;
+        // Pre-index missions by day for O(1) lookups
+        const missionIndex = new Map<string, MissionRow[]>();
+        for (const m of missionData) {
+          if (!m.due_at) continue;
+          const dayKey = toDayKey(new Date(m.due_at));
+          const existing = missionIndex.get(dayKey);
+          if (existing) {
+            existing.push(m);
+          } else {
+            missionIndex.set(dayKey, [m]);
           }
-          setEventCountsByDay(counts);
         }
+        setMissionsByDay(missionIndex);
+
+        // Pre-index events by day for O(1) lookups
+        const counts: Record<string, number> = {};
+        const eventIndex = new Map<string, CalendarEvent[]>();
+        for (const e of allEvents) {
+          if (!e.occurred_at) continue;
+          const dayKey = toDayKey(new Date(e.occurred_at));
+          counts[dayKey] = (counts[dayKey] || 0) + 1;
+          const existing = eventIndex.get(dayKey);
+          if (existing) {
+            existing.push(e);
+          } else {
+            eventIndex.set(dayKey, [e]);
+          }
+        }
+        setEventCountsByDay(counts);
+        setEventsByDay(eventIndex);
       } catch (err) {
         console.error("Calendar data fetch failed:", err);
       } finally {
@@ -104,15 +157,18 @@ export function useCalendarData(month: Date) {
 
     fetchData();
 
-    // Subscribe to realtime for mission changes
+    // Subscribe to realtime for mission and event changes
     const channel = supabase
-      .channel("calendar-missions")
+      .channel("calendar-data")
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "missions" },
-        () => {
-          fetchData();
-        }
+        () => { fetchData(); }
+      )
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "events" },
+        () => { fetchData(); }
       )
       .subscribe();
 
@@ -122,34 +178,10 @@ export function useCalendarData(month: Date) {
     };
   }, [rangeStartISO, rangeEndISO]);
 
-  // On-demand fetch events for a specific day
-  const fetchEventsForDay = useCallback(
-    async (date: Date): Promise<EventRow[]> => {
-      try {
-        const dayStart = new Date(date);
-        dayStart.setHours(0, 0, 0, 0);
-        const dayEnd = new Date(date);
-        dayEnd.setHours(23, 59, 59, 999);
-
-        const { data, error } = await supabase
-          .from("events")
-          .select("*")
-          .gte("occurred_at", dayStart.toISOString())
-          .lte("occurred_at", dayEnd.toISOString())
-          .order("occurred_at", { ascending: false })
-          .limit(50);
-
-        if (error) {
-          console.error("Failed to fetch events for day:", error.message);
-        }
-
-        return (data as EventRow[]) ?? [];
-      } catch (err) {
-        console.error("Failed to fetch events for day:", err);
-        return [];
-      }
-    },
-    []
+  // Get events for a specific day — O(1) lookup from pre-indexed map
+  const getEventsForDay = useCallback(
+    (date: Date): CalendarEvent[] => eventsByDay.get(toDayKey(date)) || [],
+    [eventsByDay]
   );
 
   // Compute stats
@@ -198,21 +230,17 @@ export function useCalendarData(month: Date) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [missions, month.getTime(), getTaskCountForDay]);
 
-  // Get missions for a specific day
+  // Get missions for a specific day — O(1) lookup from pre-indexed map
   const getMissionsForDay = useCallback(
-    (date: Date): MissionRow[] => {
-      return missions.filter(
-        (m) => m.due_at && isSameDay(new Date(m.due_at), date)
-      );
-    },
-    [missions]
+    (date: Date): MissionRow[] => missionsByDay.get(toDayKey(date)) || [],
+    [missionsByDay]
   );
 
   return {
     missions,
     eventCountsByDay,
     loading: loading || tasksLoading,
-    fetchEventsForDay,
+    getEventsForDay,
     stats,
     getMissionsForDay,
     getTasksForDay,

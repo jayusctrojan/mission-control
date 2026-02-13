@@ -1,6 +1,5 @@
 "use client";
 
-import { useState, useEffect } from "react";
 import { format } from "date-fns";
 import { Target, Activity, Clock } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
@@ -26,7 +25,7 @@ interface CalendarDayPanelProps {
   date: Date;
   missions: MissionRow[];
   scheduledTasks: ScheduledTaskOccurrence[];
-  fetchEventsForDay: (date: Date) => Promise<EventRow[]>;
+  events: Pick<EventRow, "id" | "title" | "occurred_at" | "event_type">[];
   onMissionClick: (mission: MissionRow) => void;
   agentData: Record<string, AgentData>;
 }
@@ -35,29 +34,12 @@ export function CalendarDayPanel({
   date,
   missions,
   scheduledTasks,
-  fetchEventsForDay,
+  events,
   onMissionClick,
   agentData,
 }: CalendarDayPanelProps) {
-  const [events, setEvents] = useState<EventRow[]>([]);
-  const [loadingEvents, setLoadingEvents] = useState(true);
-
-  useEffect(() => {
-    setLoadingEvents(true);
-    fetchEventsForDay(date)
-      .then((data) => {
-        setEvents(data);
-      })
-      .catch(() => {
-        setEvents([]);
-      })
-      .finally(() => {
-        setLoadingEvents(false);
-      });
-  }, [date, fetchEventsForDay]);
-
   return (
-    <div className="mt-4 rounded-lg border border-zinc-800 bg-zinc-900/50 p-4">
+    <div className="rounded-lg border border-zinc-800 bg-zinc-900/50 p-4">
       <h4 className="text-sm font-medium text-zinc-200 mb-3">
         {format(date, "EEEE, MMMM d, yyyy")}
       </h4>
@@ -160,12 +142,10 @@ export function CalendarDayPanel({
         <div className="flex items-center gap-2 mb-2">
           <Activity className="h-3.5 w-3.5 text-zinc-500" />
           <span className="text-xs font-medium text-zinc-400 uppercase tracking-wider">
-            Events ({loadingEvents ? "..." : events.length})
+            Events ({events.length})
           </span>
         </div>
-        {loadingEvents ? (
-          <p className="text-xs text-zinc-600 pl-5">Loading events...</p>
-        ) : events.length === 0 ? (
+        {events.length === 0 ? (
           <p className="text-xs text-zinc-600 pl-5">No events</p>
         ) : (
           <ScrollArea className="max-h-[200px]">
