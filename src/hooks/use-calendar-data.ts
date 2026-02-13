@@ -72,7 +72,7 @@ export function useCalendarData(month: Date) {
       const allEvents: CalendarEvent[] = [];
       let offset = 0;
 
-      while (true) {
+      while (!cancelled) {
         const { data, error } = await supabase
           .from("events")
           .select("id, title, occurred_at, event_type")
@@ -82,8 +82,7 @@ export function useCalendarData(month: Date) {
           .range(offset, offset + EVENTS_PAGE_SIZE - 1);
 
         if (error) {
-          console.error("Failed to fetch events:", error.message);
-          break;
+          throw new Error(`Failed to fetch events page at offset ${offset}: ${error.message}`);
         }
 
         if (!data || data.length === 0) break;
@@ -137,7 +136,8 @@ export function useCalendarData(month: Date) {
         const counts: Record<string, number> = {};
         const eventIndex = new Map<string, CalendarEvent[]>();
         for (const e of allEvents) {
-          const dayKey = toDayKey(new Date(e.occurred_at as string));
+          if (!e.occurred_at) continue;
+          const dayKey = toDayKey(new Date(e.occurred_at));
           counts[dayKey] = (counts[dayKey] || 0) + 1;
           const existing = eventIndex.get(dayKey);
           if (existing) {
